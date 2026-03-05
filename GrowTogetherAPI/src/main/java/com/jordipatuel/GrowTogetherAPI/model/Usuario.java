@@ -36,6 +36,9 @@ public class Usuario {
     @Column(nullable = false)
     private String password;
 
+    @Column
+    private String foto; // URL a la foto de perfil
+
     @NotNull(message = "El rol no puede ser nulo")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
