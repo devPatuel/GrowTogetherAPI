@@ -29,6 +29,18 @@ public class RegistroHabitoService {
     public List<RegistroHabito> obtenerPorRangoFechas(Long usuarioId, LocalDate start, LocalDate end) {
         return registroHabitoRepository.findByUsuario_IdAndFechaBetween(usuarioId, start, end);
     }
+    public List<RegistroHabito> obtenerHistorialHabito(Integer habitoId, Long usuarioId,
+                                                        LocalDate fechaInicio, LocalDate fechaFin) {
+        if (fechaFin == null) {
+            fechaFin = LocalDate.now();
+        }
+        if (fechaInicio == null) {
+            fechaInicio = fechaFin.minusDays(30);
+        }
+        return registroHabitoRepository
+                .findByHabito_IdAndUsuario_IdAndFechaBetweenOrderByFechaDesc(habitoId, usuarioId, fechaInicio, fechaFin);
+    }
+
     public long contarCompletadosHoy() {
         return registroHabitoRepository.countByEstadoAndFecha(EstadoHabito.COMPLETADO, LocalDate.now());
     }

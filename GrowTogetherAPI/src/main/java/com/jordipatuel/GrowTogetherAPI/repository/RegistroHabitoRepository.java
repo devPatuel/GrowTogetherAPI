@@ -12,4 +12,7 @@ public interface RegistroHabitoRepository extends JpaRepository<RegistroHabito, 
     List<RegistroHabito> findByHabito_IdAndUsuario_Id(Integer habitoId, Long usuarioId);
     List<RegistroHabito> findByUsuario_IdAndFechaBetween(Long usuarioId, LocalDate start, LocalDate end);
     long countByEstadoAndFecha(com.jordipatuel.GrowTogetherAPI.model.enums.EstadoHabito estado, LocalDate fecha);
+
+    List<RegistroHabito> findByHabito_IdAndUsuario_IdAndFechaBetweenOrderByFechaDesc(
+            Integer habitoId, Long usuarioId, LocalDate fechaInicio, LocalDate fechaFin);
 }

@@ -3,17 +3,22 @@ import com.jordipatuel.GrowTogetherAPI.config.AuthUserDetails;
 import com.jordipatuel.GrowTogetherAPI.config.Config;
 import com.jordipatuel.GrowTogetherAPI.dto.HabitoCreateDTO;
 import com.jordipatuel.GrowTogetherAPI.dto.HabitoDTO;
+import com.jordipatuel.GrowTogetherAPI.dto.RegistroHabitoHistorialDTO;
 import com.jordipatuel.GrowTogetherAPI.model.Habito;
+import com.jordipatuel.GrowTogetherAPI.model.RegistroHabito;
 import com.jordipatuel.GrowTogetherAPI.model.enums.DiaSemana;
 import com.jordipatuel.GrowTogetherAPI.model.enums.Frecuencia;
 import com.jordipatuel.GrowTogetherAPI.service.HabitoService;
+import com.jordipatuel.GrowTogetherAPI.service.RegistroHabitoService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -22,9 +27,11 @@ import java.util.stream.Collectors;
 @RequestMapping(Config.API_URL + "/habitos")
 public class HabitoController {
     private final HabitoService habitoService;
+    private final RegistroHabitoService registroHabitoService;
     @Autowired
-    public HabitoController(HabitoService habitoService) {
+    public HabitoController(HabitoService habitoService, RegistroHabitoService registroHabitoService) {
         this.habitoService = habitoService;
+        this.registroHabitoService = registroHabitoService;
     }
     @PreAuthorize("isAuthenticated()")
     @PostMapping
@@ -99,6 +106,22 @@ public class HabitoController {
         Habito progreso = habitoService.obtenerProgreso(id);
         return ResponseEntity.ok(mapToDTO(progreso, principal.getId()));
     }
+    @PreAuthorize("@habitoService.isOwner(#id, authentication.principal.id)")
+    @GetMapping("/{id}/historial")
+    public ResponseEntity<List<RegistroHabitoHistorialDTO>> obtenerHistorial(
+            @PathVariable Integer id,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaInicio,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
+            Authentication authentication) {
+        AuthUserDetails principal = (AuthUserDetails) authentication.getPrincipal();
+        List<RegistroHabitoHistorialDTO> historial = registroHabitoService
+                .obtenerHistorialHabito(id, principal.getId(), fechaInicio, fechaFin)
+                .stream()
+                .map(r -> new RegistroHabitoHistorialDTO(r.getFecha(), r.getEstado()))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(historial);
+    }
+
     private HabitoDTO mapToDTO(Habito habito, Long usuarioId) {
         boolean completadoHoy = habitoService.estaCompletadoHoy(habito.getId(), usuarioId);
         HabitoDTO dto = new HabitoDTO();
