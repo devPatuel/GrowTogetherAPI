@@ -19,4 +19,9 @@ public class HabitoCreateDTO {
     private String frecuencia;
 
     private Set<String> diasSemana;
+
+    private String tipo;
+
+    @Size(max = 50, message = "El icono no puede superar los 50 caracteres")
+    private String icono;
 }

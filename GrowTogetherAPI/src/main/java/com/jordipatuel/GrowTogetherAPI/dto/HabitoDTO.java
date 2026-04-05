@@ -16,4 +16,6 @@ public class HabitoDTO {
     private boolean completadoHoy;
     private String frecuencia;
     private Set<String> diasSemana;
+    private String tipo;
+    private String icono;
 }

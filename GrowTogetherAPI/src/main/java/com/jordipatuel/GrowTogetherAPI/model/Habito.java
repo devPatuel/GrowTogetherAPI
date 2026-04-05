@@ -6,6 +6,7 @@ import java.util.Set;
 import jakarta.validation.constraints.*;
 import com.jordipatuel.GrowTogetherAPI.model.enums.DiaSemana;
 import com.jordipatuel.GrowTogetherAPI.model.enums.Frecuencia;
+import com.jordipatuel.GrowTogetherAPI.model.enums.TipoHabito;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -40,6 +41,14 @@ public class Habito {
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private Frecuencia frecuencia = Frecuencia.DIARIO;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private TipoHabito tipo = TipoHabito.POSITIVO;
+
+    @Size(max = 50, message = "El icono no puede superar los 50 caracteres")
+    @Column(length = 50)
+    private String icono;
 
     @ElementCollection(targetClass = DiaSemana.class)
     @Enumerated(EnumType.STRING)

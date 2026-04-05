@@ -8,6 +8,7 @@ import com.jordipatuel.GrowTogetherAPI.model.Habito;
 import com.jordipatuel.GrowTogetherAPI.model.RegistroHabito;
 import com.jordipatuel.GrowTogetherAPI.model.enums.DiaSemana;
 import com.jordipatuel.GrowTogetherAPI.model.enums.Frecuencia;
+import com.jordipatuel.GrowTogetherAPI.model.enums.TipoHabito;
 import com.jordipatuel.GrowTogetherAPI.service.HabitoService;
 import com.jordipatuel.GrowTogetherAPI.service.RegistroHabitoService;
 import jakarta.validation.Valid;
@@ -46,6 +47,10 @@ public class HabitoController {
             habito.setFrecuencia(Frecuencia.valueOf(dto.getFrecuencia()));
         }
         habito.setDiasSemana(parseDias(dto.getDiasSemana()));
+        if (dto.getTipo() != null) {
+            habito.setTipo(TipoHabito.valueOf(dto.getTipo()));
+        }
+        habito.setIcono(dto.getIcono());
         Habito nuevoHabito = habitoService.crearHabito(habito, principal.getId());
         return new ResponseEntity<>(mapToDTO(nuevoHabito, principal.getId()), HttpStatus.CREATED);
     }
@@ -70,6 +75,10 @@ public class HabitoController {
             habitoInfo.setFrecuencia(Frecuencia.valueOf(dto.getFrecuencia()));
         }
         habitoInfo.setDiasSemana(parseDias(dto.getDiasSemana()));
+        if (dto.getTipo() != null) {
+            habitoInfo.setTipo(TipoHabito.valueOf(dto.getTipo()));
+        }
+        habitoInfo.setIcono(dto.getIcono());
         Habito actualizado = habitoService.editarHabito(id, habitoInfo);
         return ResponseEntity.ok(mapToDTO(actualizado, principal.getId()));
     }
@@ -136,6 +145,8 @@ public class HabitoController {
         dto.setDiasSemana(habito.getDiasSemana() != null
                 ? habito.getDiasSemana().stream().map(DiaSemana::name).collect(Collectors.toSet())
                 : new HashSet<>());
+        dto.setTipo(habito.getTipo() != null ? habito.getTipo().name() : "POSITIVO");
+        dto.setIcono(habito.getIcono());
         return dto;
     }
 

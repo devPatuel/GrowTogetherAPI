@@ -165,6 +165,14 @@ public class HabitoService {
                 habito.setDiasSemana(habitoActualizado.getDiasSemana());
                 modificado = true;
             }
+            if (habitoActualizado.getTipo() != null) {
+                habito.setTipo(habitoActualizado.getTipo());
+                modificado = true;
+            }
+            if (habitoActualizado.getIcono() != null) {
+                habito.setIcono(habitoActualizado.getIcono());
+                modificado = true;
+            }
             if (modificado) {
                 return habitoRepository.save(habito);
             }
