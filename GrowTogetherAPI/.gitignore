@@ -35,3 +35,15 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Logs y archivos temporales ###
+*.log
+*.tmp
+build_err*.txt
+
+### Variables de entorno ###
+.env
+.env.local
+
+### Claude ###
+CLAUDE.md
