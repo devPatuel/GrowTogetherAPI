@@ -64,7 +64,9 @@ public class AuthController {
                 "message", "Login exitoso",
                 "usuarioId", usuarioInfo.getId(),
                 "nombre", usuarioInfo.getNombre(),
-                "email", usuarioInfo.getEmail()
+                "email", usuarioInfo.getEmail(),
+                "tema", usuarioInfo.getTema(),
+                "idioma", usuarioInfo.getIdioma()
             ));
         } catch (org.springframework.security.core.AuthenticationException e) {
             auditService.registrar("LOGIN_FAIL", "Usuario", null,
@@ -79,13 +81,15 @@ public class AuthController {
     }
     private UsuarioDTO mapToDTO(Usuario usuario) {
         return new UsuarioDTO(
-            usuario.getId(), 
-            usuario.getNombre(), 
-            usuario.getEmail(), 
-            usuario.getRol(), 
-            usuario.getFechaRegistro(), 
-            usuario.getPuntosTotales(), 
-            usuario.getFoto()
+            usuario.getId(),
+            usuario.getNombre(),
+            usuario.getEmail(),
+            usuario.getRol(),
+            usuario.getFechaRegistro(),
+            usuario.getPuntosTotales(),
+            usuario.getFoto(),
+            usuario.getTema(),
+            usuario.getIdioma()
         );
     }
     @Data

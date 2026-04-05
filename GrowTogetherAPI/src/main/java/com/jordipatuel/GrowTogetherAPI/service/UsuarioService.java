@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -88,6 +89,34 @@ public class UsuarioService implements UserDetailsService {
         if(foto != null) usuario.setFoto(foto);
         return usuarioRepository.save(usuario);
     }
+    private static final List<String> TEMAS_VALIDOS = Arrays.asList("CLARO", "OSCURO", "MORADO", "NATURALEZA");
+    private static final List<String> IDIOMAS_VALIDOS = Arrays.asList("es", "en", "ca");
+
+    public Usuario actualizarPreferencias(Long idUsuario, String tema, String idioma) {
+        Usuario usuario = usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new com.jordipatuel.GrowTogetherAPI.exception.ResourceNotFoundException("Usuario no encontrado"));
+
+        if (tema != null) {
+            String temaUpper = tema.toUpperCase();
+            if (!TEMAS_VALIDOS.contains(temaUpper)) {
+                throw new com.jordipatuel.GrowTogetherAPI.exception.BadRequestException(
+                        "Tema no válido. Valores permitidos: " + TEMAS_VALIDOS);
+            }
+            usuario.setTema(temaUpper);
+        }
+
+        if (idioma != null) {
+            String idiomaLower = idioma.toLowerCase();
+            if (!IDIOMAS_VALIDOS.contains(idiomaLower)) {
+                throw new com.jordipatuel.GrowTogetherAPI.exception.BadRequestException(
+                        "Idioma no válido. Valores permitidos: " + IDIOMAS_VALIDOS);
+            }
+            usuario.setIdioma(idiomaLower);
+        }
+
+        return usuarioRepository.save(usuario);
+    }
+
     public void agregarAmigo(Long idUsuario, Long idAmigo) {
         Usuario usuario = obtenerPorId(idUsuario);
         Usuario amigo = obtenerPorId(idAmigo);

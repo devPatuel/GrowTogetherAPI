@@ -48,6 +48,12 @@ public class Usuario {
     private int tokenVersion = 0;
     @Column(nullable = false)
     private boolean activo = true;
+
+    @Column(nullable = false, length = 20)
+    private String tema = "CLARO";
+
+    @Column(nullable = false, length = 5)
+    private String idioma = "es";
     @ToString.Exclude
     @ManyToMany
     @JoinTable(

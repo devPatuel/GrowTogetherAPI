@@ -98,6 +98,16 @@ public class UsuarioController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(consejosList);
     }
+    @PreAuthorize("isAuthenticated() and #id == authentication.principal.id")
+    @PutMapping("/perfil/{id}/preferencias")
+    public ResponseEntity<UsuarioDTO> actualizarPreferencias(
+            @PathVariable Long id,
+            @RequestBody PreferenciasRequest request) {
+        Usuario usuarioActualizado = usuarioService.actualizarPreferencias(
+                id, request.getTema(), request.getIdioma());
+        return ResponseEntity.ok(mapToDTO(usuarioActualizado));
+    }
+
     private UsuarioDTO mapToDTO(Usuario usuario) {
         return new UsuarioDTO(
             usuario.getId(),
@@ -106,7 +116,9 @@ public class UsuarioController {
             usuario.getRol(),
             usuario.getFechaRegistro(),
             usuario.getPuntosTotales(),
-            usuario.getFoto()
+            usuario.getFoto(),
+            usuario.getTema(),
+            usuario.getIdioma()
         );
     }
     @Data
@@ -119,5 +131,10 @@ public class UsuarioController {
     public static class CambiarContrasenaRequest {
         private String currentPassword;
         private String newPassword;
+    }
+    @Data
+    public static class PreferenciasRequest {
+        private String tema;
+        private String idioma;
     }
 }

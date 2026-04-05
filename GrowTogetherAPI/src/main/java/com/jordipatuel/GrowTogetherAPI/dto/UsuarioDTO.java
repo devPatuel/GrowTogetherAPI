@@ -15,4 +15,6 @@ public class UsuarioDTO {
     private Date fechaRegistro;
     private int puntosTotales;
     private String foto;
+    private String tema;
+    private String idioma;
 }
