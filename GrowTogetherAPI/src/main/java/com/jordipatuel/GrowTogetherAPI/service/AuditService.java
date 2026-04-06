@@ -35,7 +35,7 @@ public class AuditService {
     }
 
     public List<AuditLog> obtenerPorUsuario(Long usuarioId) {
-        return auditLogRepository.findByUsuarioIdOrderByFechaDesc(usuarioId);
+        return auditLogRepository.findTop100ByUsuarioIdOrderByFechaDesc(usuarioId);
     }
 
     public List<AuditLog> obtenerPorEntidad(String entidad) {

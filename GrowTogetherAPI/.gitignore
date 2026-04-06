@@ -44,6 +44,8 @@ build_err*.txt
 ### Variables de entorno ###
 .env
 .env.local
+application-dev.properties
+**/application-dev.properties
 
 ### Claude ###
 CLAUDE.md

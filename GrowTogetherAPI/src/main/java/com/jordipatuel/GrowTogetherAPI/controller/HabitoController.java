@@ -19,6 +19,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import com.jordipatuel.GrowTogetherAPI.model.enums.EstadoHabito;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
@@ -56,16 +58,18 @@ public class HabitoController {
     }
     @PreAuthorize("isAuthenticated() and #usuarioId == authentication.principal.id")
     @GetMapping("/usuario/{usuarioId}")
-    public ResponseEntity<List<HabitoDTO>> listarHabitosUsuario(@PathVariable Long usuarioId) {
+    public ResponseEntity<List<HabitoDTO>> listarHabitosUsuario(
+            @PathVariable Long usuarioId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
         List<HabitoDTO> habitos = habitoService.obtenerHabitosPorUsuario(usuarioId)
-                .stream().map(h -> mapToDTO(h, usuarioId)).collect(Collectors.toList());
+                .stream().map(h -> mapToDTO(h, usuarioId, fecha)).collect(Collectors.toList());
         return ResponseEntity.ok(habitos);
     }
     @PreAuthorize("@habitoService.isOwner(#id, authentication.principal.id)")
     @PutMapping("/{id}")
     public ResponseEntity<HabitoDTO> editarHabito(
             @PathVariable Integer id,
-            @RequestBody HabitoCreateDTO dto,
+            @Valid @RequestBody HabitoCreateDTO dto,
             Authentication authentication) {
         AuthUserDetails principal = (AuthUserDetails) authentication.getPrincipal();
         Habito habitoInfo = new Habito();
@@ -92,19 +96,21 @@ public class HabitoController {
     @PostMapping("/{id}/completar")
     public ResponseEntity<HabitoDTO> completarHabito(
             @PathVariable Integer id,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
             Authentication authentication) {
         AuthUserDetails principal = (AuthUserDetails) authentication.getPrincipal();
-        Habito habito = habitoService.completarHabito(id, principal.getId());
-        return ResponseEntity.ok(mapToDTO(habito, principal.getId()));
+        Habito habito = habitoService.completarHabito(id, principal.getId(), fecha);
+        return ResponseEntity.ok(mapToDTO(habito, principal.getId(), fecha));
     }
     @PreAuthorize("@habitoService.isOwner(#id, authentication.principal.id)")
     @PostMapping("/{id}/descompletar")
     public ResponseEntity<HabitoDTO> descompletarHabito(
             @PathVariable Integer id,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha,
             Authentication authentication) {
         AuthUserDetails principal = (AuthUserDetails) authentication.getPrincipal();
-        Habito habito = habitoService.descompletarHabito(id, principal.getId());
-        return ResponseEntity.ok(mapToDTO(habito, principal.getId()));
+        Habito habito = habitoService.descompletarHabito(id, principal.getId(), fecha);
+        return ResponseEntity.ok(mapToDTO(habito, principal.getId(), fecha));
     }
     @PreAuthorize("@habitoService.isOwner(#id, authentication.principal.id)")
     @GetMapping("/{id}/progreso")
@@ -132,7 +138,11 @@ public class HabitoController {
     }
 
     private HabitoDTO mapToDTO(Habito habito, Long usuarioId) {
-        boolean completadoHoy = habitoService.estaCompletadoHoy(habito.getId(), usuarioId);
+        return mapToDTO(habito, usuarioId, null);
+    }
+
+    private HabitoDTO mapToDTO(Habito habito, Long usuarioId, LocalDate fecha) {
+        boolean completadoHoy = habitoService.estaCompletadoEnFecha(habito.getId(), usuarioId, fecha);
         HabitoDTO dto = new HabitoDTO();
         dto.setId(habito.getId());
         dto.setNombre(habito.getNombre());
@@ -147,7 +157,48 @@ public class HabitoController {
                 : new HashSet<>());
         dto.setTipo(habito.getTipo() != null ? habito.getTipo().name() : "POSITIVO");
         dto.setIcono(habito.getIcono());
+        dto.setProgresoMensual(calcularProgresoMensual(habito, usuarioId));
         return dto;
+    }
+
+    private double calcularProgresoMensual(Habito habito, Long usuarioId) {
+        LocalDate hoy = LocalDate.now();
+        LocalDate inicioMes = hoy.withDayOfMonth(1);
+
+        // Dias esperados este mes hasta hoy
+        int diasEsperados = 0;
+        if (habito.getFrecuencia() == Frecuencia.DIARIO) {
+            diasEsperados = hoy.getDayOfMonth();
+        } else {
+            Set<DiaSemana> dias = habito.getDiasSemana();
+            if (dias == null || dias.isEmpty()) return 0;
+            for (LocalDate d = inicioMes; !d.isAfter(hoy); d = d.plusDays(1)) {
+                DayOfWeek dow = d.getDayOfWeek();
+                String diaEnum = switch (dow) {
+                    case MONDAY -> "LUNES";
+                    case TUESDAY -> "MARTES";
+                    case WEDNESDAY -> "MIERCOLES";
+                    case THURSDAY -> "JUEVES";
+                    case FRIDAY -> "VIERNES";
+                    case SATURDAY -> "SABADO";
+                    case SUNDAY -> "DOMINGO";
+                };
+                if (dias.stream().anyMatch(ds -> ds.name().equals(diaEnum))) {
+                    diasEsperados++;
+                }
+            }
+        }
+
+        if (diasEsperados == 0) return 0;
+
+        // Dias completados reales
+        List<RegistroHabito> registros = registroHabitoService
+                .obtenerHistorialHabito(habito.getId(), usuarioId, inicioMes, hoy);
+        long completados = registros.stream()
+                .filter(r -> r.getEstado() == EstadoHabito.COMPLETADO)
+                .count();
+
+        return Math.min((double) completados / diasEsperados, 1.0);
     }
 
     private Set<DiaSemana> parseDias(Set<String> dias) {

@@ -1,6 +1,7 @@
 package com.jordipatuel.GrowTogetherAPI.controller;
 import com.jordipatuel.GrowTogetherAPI.config.AuthUserDetails;
 import com.jordipatuel.GrowTogetherAPI.config.Config;
+import com.jordipatuel.GrowTogetherAPI.dto.AuditLogDTO;
 import com.jordipatuel.GrowTogetherAPI.dto.ConsejoCreateDTO;
 import com.jordipatuel.GrowTogetherAPI.dto.ConsejoDTO;
 import com.jordipatuel.GrowTogetherAPI.model.AuditLog;
@@ -59,6 +60,9 @@ public class AdminController {
         String newPassword = body.get("newPassword");
         if (newPassword == null || newPassword.isBlank() || newPassword.length() < 8) {
             return ResponseEntity.badRequest().body("La nueva contraseña debe tener al menos 8 caracteres");
+        }
+        if (!newPassword.matches("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).+$")) {
+            return ResponseEntity.badRequest().body("La contraseña debe contener al menos una mayúscula, una minúscula y un dígito");
         }
         AuthUserDetails principal = (AuthUserDetails) authentication.getPrincipal();
         usuarioService.resetearContrasena(id, newPassword);
@@ -144,13 +148,23 @@ public class AdminController {
     }
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/audit")
-    public ResponseEntity<List<AuditLog>> verAuditLog() {
-        return ResponseEntity.ok(auditService.obtenerUltimos());
+    public ResponseEntity<List<AuditLogDTO>> verAuditLog() {
+        List<AuditLogDTO> logs = auditService.obtenerUltimos().stream()
+                .map(this::mapToAuditDTO).collect(Collectors.toList());
+        return ResponseEntity.ok(logs);
     }
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/audit/usuario/{usuarioId}")
-    public ResponseEntity<List<AuditLog>> verAuditPorUsuario(@PathVariable Long usuarioId) {
-        return ResponseEntity.ok(auditService.obtenerPorUsuario(usuarioId));
+    public ResponseEntity<List<AuditLogDTO>> verAuditPorUsuario(@PathVariable Long usuarioId) {
+        List<AuditLogDTO> logs = auditService.obtenerPorUsuario(usuarioId).stream()
+                .map(this::mapToAuditDTO).collect(Collectors.toList());
+        return ResponseEntity.ok(logs);
+    }
+    private AuditLogDTO mapToAuditDTO(AuditLog log) {
+        return new AuditLogDTO(
+                log.getId(), log.getAccion(), log.getEntidad(), log.getEntidadId(),
+                log.getUsuarioId(), log.getUsuarioEmail(), log.getDetalle(),
+                log.getIp(), log.getFecha());
     }
     private ConsejoDTO mapToDTO(Consejo consejo) {
         return new ConsejoDTO(

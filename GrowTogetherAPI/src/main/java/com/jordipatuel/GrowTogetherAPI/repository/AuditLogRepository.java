@@ -8,7 +8,7 @@ import java.util.List;
 
 @Repository
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
-    List<AuditLog> findByUsuarioIdOrderByFechaDesc(Long usuarioId);
+    List<AuditLog> findTop100ByUsuarioIdOrderByFechaDesc(Long usuarioId);
     List<AuditLog> findByEntidadOrderByFechaDesc(String entidad);
     List<AuditLog> findByFechaBetweenOrderByFechaDesc(Date desde, Date hasta);
     List<AuditLog> findTop100ByOrderByFechaDesc();

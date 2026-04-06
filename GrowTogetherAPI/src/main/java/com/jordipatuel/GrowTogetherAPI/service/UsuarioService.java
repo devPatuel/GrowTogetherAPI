@@ -3,7 +3,6 @@ import com.jordipatuel.GrowTogetherAPI.model.Usuario;
 import com.jordipatuel.GrowTogetherAPI.model.enums.Roles;
 import com.jordipatuel.GrowTogetherAPI.repository.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import java.util.Arrays;
@@ -22,9 +21,9 @@ public class UsuarioService implements UserDetailsService {
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     @Autowired
-    public UsuarioService(UsuarioRepository usuarioRepository) {
+    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
         this.usuarioRepository = usuarioRepository;
-        this.passwordEncoder = new BCryptPasswordEncoder(); 
+        this.passwordEncoder = passwordEncoder;
     }
     public Usuario registrarUsuario(Usuario usuario) {
         String contrasenaEncriptada = passwordEncoder.encode(usuario.getPassword());

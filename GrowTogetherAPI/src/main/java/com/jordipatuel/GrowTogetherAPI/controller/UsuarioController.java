@@ -6,14 +6,18 @@ import com.jordipatuel.GrowTogetherAPI.dto.ConsejoDTO;
 import com.jordipatuel.GrowTogetherAPI.model.Usuario;
 import com.jordipatuel.GrowTogetherAPI.service.UsuarioService;
 import com.jordipatuel.GrowTogetherAPI.service.ConsejoService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
+@Validated
 @RestController
 @RequestMapping(Config.API_URL + "/usuarios")
 public class UsuarioController {
@@ -34,7 +38,7 @@ public class UsuarioController {
     @PutMapping("/perfil/{id}")
     public ResponseEntity<UsuarioDTO> editarPerfil(
             @PathVariable Long id,
-            @RequestBody EditarPerfilRequest request) {
+            @Valid @RequestBody EditarPerfilRequest request) {
         Usuario usuarioEditado = usuarioService.editarPerfil(
                 id, request.getNombre(), request.getEmail(), request.getFoto());
         return ResponseEntity.ok(mapToDTO(usuarioEditado));
@@ -43,17 +47,13 @@ public class UsuarioController {
     @PutMapping("/perfil/{id}/contrasena")
     public ResponseEntity<?> cambiarContrasena(
             @PathVariable Long id,
-            @RequestBody CambiarContrasenaRequest request) {
-        try {
-            usuarioService.cambiarContrasena(id, request.getCurrentPassword(), request.getNewPassword());
-            return ResponseEntity.ok(java.util.Map.of("message", "Contraseña actualizada con éxito"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(java.util.Map.of("error", e.getMessage()));
-        }
+            @Valid @RequestBody CambiarContrasenaRequest request) {
+        usuarioService.cambiarContrasena(id, request.getCurrentPassword(), request.getNewPassword());
+        return ResponseEntity.ok(java.util.Map.of("message", "Contraseña actualizada con éxito"));
     }
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/buscar")
-    public ResponseEntity<List<UsuarioDTO>> buscarUsuarios(@RequestParam String q) {
+    public ResponseEntity<List<UsuarioDTO>> buscarUsuarios(@RequestParam @Size(min = 1, max = 100) String q) {
         List<UsuarioDTO> resultados = usuarioService.buscarPorNombreOEmail(q)
                 .stream()
                 .map(this::mapToDTO)
@@ -123,13 +123,22 @@ public class UsuarioController {
     }
     @Data
     public static class EditarPerfilRequest {
+        @Size(min = 2, max = 100, message = "El nombre debe tener entre 2 y 100 caracteres")
         private String nombre;
+        @Email(message = "El email debe ser válido")
+        @Size(max = 200, message = "El email no puede superar los 200 caracteres")
         private String email;
+        @Size(max = 500, message = "La URL de la foto no puede superar los 500 caracteres")
         private String foto;
     }
     @Data
     public static class CambiarContrasenaRequest {
+        @NotBlank(message = "La contraseña actual es obligatoria")
         private String currentPassword;
+        @NotBlank(message = "La nueva contraseña es obligatoria")
+        @Size(min = 8, max = 100, message = "La contraseña debe tener entre 8 y 100 caracteres")
+        @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).+$",
+                message = "La contraseña debe contener al menos una mayúscula, una minúscula y un dígito")
         private String newPassword;
     }
     @Data
