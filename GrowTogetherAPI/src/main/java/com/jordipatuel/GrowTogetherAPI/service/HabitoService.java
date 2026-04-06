@@ -51,31 +51,33 @@ public class HabitoService {
         return habitoRepository.findByUsuarioIdAndActivoTrue(usuarioId);
     }
 
-    public boolean estaCompletadoHoy(Integer habitoId, Long usuarioId) {
+    public boolean estaCompletadoEnFecha(Integer habitoId, Long usuarioId, LocalDate fecha) {
+        if (fecha == null) fecha = LocalDate.now();
         return registroHabitoRepository
-                .findByHabito_IdAndUsuario_IdAndFecha(habitoId, usuarioId, LocalDate.now())
+                .findByHabito_IdAndUsuario_IdAndFecha(habitoId, usuarioId, fecha)
                 .map(r -> r.getEstado() == EstadoHabito.COMPLETADO)
                 .orElse(false);
     }
 
     @Transactional
-    public Habito completarHabito(Integer id, Long usuarioId) {
+    public Habito completarHabito(Integer id, Long usuarioId, LocalDate fecha) {
+        if (fecha == null) fecha = LocalDate.now();
         Habito habito = obtenerPorId(id);
         if (!habito.getUsuario().getId().equals(usuarioId)) {
             throw new com.jordipatuel.GrowTogetherAPI.exception.BadRequestException("No puedes completar un hábito de otro usuario");
         }
 
+        final LocalDate fechaFinal = fecha;
         RegistroHabito registro = registroHabitoRepository
-                .findByHabito_IdAndUsuario_IdAndFecha(id, usuarioId, LocalDate.now())
+                .findByHabito_IdAndUsuario_IdAndFecha(id, usuarioId, fecha)
                 .orElseGet(() -> {
                     RegistroHabito nuevo = new RegistroHabito();
                     nuevo.setHabito(habito);
                     nuevo.setUsuario(habito.getUsuario());
-                    nuevo.setFecha(LocalDate.now());
+                    nuevo.setFecha(fechaFinal);
                     return nuevo;
                 });
 
-        // Si ya esta completado hoy, no hacer nada (evitar doble puntos)
         if (registro.getEstado() == EstadoHabito.COMPLETADO) {
             return habito;
         }
@@ -83,33 +85,24 @@ public class HabitoService {
         registro.setEstado(EstadoHabito.COMPLETADO);
         registroHabitoRepository.save(registro);
 
-        // Calcular racha
-        Optional<RegistroHabito> ayer = registroHabitoRepository
-                .findByHabito_IdAndUsuario_IdAndFecha(id, usuarioId, LocalDate.now().minusDays(1));
-        if (ayer.isEmpty() || ayer.get().getEstado() != EstadoHabito.COMPLETADO) {
-            habito.setRachaActual(1);
-        } else {
-            habito.setRachaActual(habito.getRachaActual() + 1);
-        }
-        if (habito.getRachaActual() > habito.getRachaMaxima()) {
-            habito.setRachaMaxima(habito.getRachaActual());
-        }
+        // Recalcular racha desde hoy hacia atras
+        recalcularRacha(habito, id, usuarioId);
 
         return habitoRepository.save(habito);
     }
 
     @Transactional
-    public Habito descompletarHabito(Integer id, Long usuarioId) {
+    public Habito descompletarHabito(Integer id, Long usuarioId, LocalDate fecha) {
+        if (fecha == null) fecha = LocalDate.now();
         Habito habito = obtenerPorId(id);
         if (!habito.getUsuario().getId().equals(usuarioId)) {
             throw new com.jordipatuel.GrowTogetherAPI.exception.BadRequestException("No puedes modificar un hábito de otro usuario");
         }
 
         RegistroHabito registro = registroHabitoRepository
-                .findByHabito_IdAndUsuario_IdAndFecha(id, usuarioId, LocalDate.now())
+                .findByHabito_IdAndUsuario_IdAndFecha(id, usuarioId, fecha)
                 .orElse(null);
 
-        // Si no estaba completado, no hacer nada
         if (registro == null || registro.getEstado() != EstadoHabito.COMPLETADO) {
             return habito;
         }
@@ -117,29 +110,36 @@ public class HabitoService {
         registro.setEstado(EstadoHabito.PENDIENTE);
         registroHabitoRepository.save(registro);
 
-        // Restaurar racha: recalcular desde ayer
-        Optional<RegistroHabito> ayer = registroHabitoRepository
-                .findByHabito_IdAndUsuario_IdAndFecha(id, usuarioId, LocalDate.now().minusDays(1));
-        if (ayer.isPresent() && ayer.get().getEstado() == EstadoHabito.COMPLETADO) {
-            // Recalcular la racha contando dias consecutivos hacia atras desde ayer
-            int racha = 0;
-            LocalDate dia = LocalDate.now().minusDays(1);
-            while (true) {
-                Optional<RegistroHabito> reg = registroHabitoRepository
-                        .findByHabito_IdAndUsuario_IdAndFecha(id, usuarioId, dia);
-                if (reg.isPresent() && reg.get().getEstado() == EstadoHabito.COMPLETADO) {
-                    racha++;
-                    dia = dia.minusDays(1);
-                } else {
-                    break;
-                }
-            }
-            habito.setRachaActual(racha);
-        } else {
-            habito.setRachaActual(0);
-        }
+        // Recalcular racha desde hoy hacia atras
+        recalcularRacha(habito, id, usuarioId);
 
         return habitoRepository.save(habito);
+    }
+
+    private void recalcularRacha(Habito habito, Integer id, Long usuarioId) {
+        // Contar dias consecutivos completados desde hoy hacia atras
+        int racha = 0;
+        LocalDate dia = LocalDate.now();
+        // Si hoy no esta completado, empezar desde ayer
+        Optional<RegistroHabito> hoyReg = registroHabitoRepository
+                .findByHabito_IdAndUsuario_IdAndFecha(id, usuarioId, dia);
+        if (hoyReg.isEmpty() || hoyReg.get().getEstado() != EstadoHabito.COMPLETADO) {
+            dia = dia.minusDays(1);
+        }
+        while (true) {
+            Optional<RegistroHabito> reg = registroHabitoRepository
+                    .findByHabito_IdAndUsuario_IdAndFecha(id, usuarioId, dia);
+            if (reg.isPresent() && reg.get().getEstado() == EstadoHabito.COMPLETADO) {
+                racha++;
+                dia = dia.minusDays(1);
+            } else {
+                break;
+            }
+        }
+        habito.setRachaActual(racha);
+        if (racha > habito.getRachaMaxima()) {
+            habito.setRachaMaxima(racha);
+        }
     }
 
     public Habito obtenerProgreso(Integer id) {

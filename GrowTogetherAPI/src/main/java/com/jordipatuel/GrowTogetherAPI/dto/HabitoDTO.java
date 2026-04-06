@@ -18,4 +18,5 @@ public class HabitoDTO {
     private Set<String> diasSemana;
     private String tipo;
     private String icono;
+    private double progresoMensual;
 }

@@ -32,8 +32,7 @@ public class Usuario {
     @NotBlank(message = "La contraseña no puede estar vacía")
     @Column(nullable = false)
     private String password;
-    @Size(max = 500, message = "La URL de la foto no puede superar los 500 caracteres")
-    @Column(length = 500)
+    @Column(columnDefinition = "TEXT")
     private String foto;
     @NotNull(message = "El rol no puede ser nulo")
     @Enumerated(EnumType.STRING)
