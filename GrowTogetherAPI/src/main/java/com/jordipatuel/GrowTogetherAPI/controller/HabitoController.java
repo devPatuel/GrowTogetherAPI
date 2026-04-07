@@ -129,6 +129,8 @@ public class HabitoController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fechaFin,
             Authentication authentication) {
         AuthUserDetails principal = (AuthUserDetails) authentication.getPrincipal();
+        Habito habito = habitoService.obtenerPorId(id);
+        registroHabitoService.rellenarNoCompletados(habito);
         List<RegistroHabitoHistorialDTO> historial = registroHabitoService
                 .obtenerHistorialHabito(id, principal.getId(), fechaInicio, fechaFin)
                 .stream()
@@ -157,6 +159,7 @@ public class HabitoController {
                 : new HashSet<>());
         dto.setTipo(habito.getTipo() != null ? habito.getTipo().name() : "POSITIVO");
         dto.setIcono(habito.getIcono());
+        dto.setFechaInicio(habito.getFechaInicio());
         dto.setProgresoMensual(calcularProgresoMensual(habito, usuarioId));
         return dto;
     }

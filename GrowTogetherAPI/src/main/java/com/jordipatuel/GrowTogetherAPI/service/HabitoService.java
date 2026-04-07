@@ -31,6 +31,7 @@ public class HabitoService {
         habito.setUsuario(usuario);
         habito.setRachaActual(0);
         habito.setRachaMaxima(0);
+        habito.setFechaInicio(LocalDate.now());
         Habito habitoGuardado = habitoRepository.save(habito);
         RegistroHabito registro = new RegistroHabito();
         registro.setUsuario(usuario);

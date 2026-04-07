@@ -8,4 +8,5 @@ import java.util.List;
 public interface HabitoRepository extends JpaRepository<Habito, Integer> {
     List<Habito> findByUsuarioId(Long usuarioId);
     List<Habito> findByUsuarioIdAndActivoTrue(Long usuarioId);
+    List<Habito> findByActivoTrue();
 }

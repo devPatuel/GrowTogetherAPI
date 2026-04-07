@@ -1,5 +1,6 @@
 package com.jordipatuel.GrowTogetherAPI.model;
 import jakarta.persistence.*;
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -45,6 +46,9 @@ public class Habito {
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private TipoHabito tipo = TipoHabito.POSITIVO;
+
+    @Column(nullable = false)
+    private LocalDate fechaInicio = LocalDate.now();
 
     @Size(max = 50, message = "El icono no puede superar los 50 caracteres")
     @Column(length = 50)

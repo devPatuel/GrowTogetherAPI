@@ -1,12 +1,16 @@
 package com.jordipatuel.GrowTogetherAPI.service;
+import com.jordipatuel.GrowTogetherAPI.model.Habito;
 import com.jordipatuel.GrowTogetherAPI.model.RegistroHabito;
 import com.jordipatuel.GrowTogetherAPI.model.enums.EstadoHabito;
 import com.jordipatuel.GrowTogetherAPI.repository.RegistroHabitoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 @Service
 public class RegistroHabitoService {
     private final RegistroHabitoRepository registroHabitoRepository;
@@ -43,5 +47,33 @@ public class RegistroHabitoService {
 
     public long contarCompletadosHoy() {
         return registroHabitoRepository.countByEstadoAndFecha(EstadoHabito.COMPLETADO, LocalDate.now());
+    }
+
+    @Transactional
+    public void rellenarNoCompletados(Habito habito) {
+        LocalDate desde = habito.getFechaInicio();
+        if (desde == null) return;
+        LocalDate ayer = LocalDate.now().minusDays(1);
+        if (desde.isAfter(ayer)) return;
+
+        // Obtener fechas que ya tienen registro
+        List<RegistroHabito> existentes = registroHabitoRepository
+                .findByHabito_IdAndUsuario_IdAndFechaBetweenOrderByFechaDesc(
+                        habito.getId(), habito.getUsuario().getId(), desde, ayer);
+        Set<LocalDate> fechasConRegistro = existentes.stream()
+                .map(RegistroHabito::getFecha)
+                .collect(Collectors.toSet());
+
+        // Crear NO_COMPLETADO para los días sin registro
+        for (LocalDate dia = desde; !dia.isAfter(ayer); dia = dia.plusDays(1)) {
+            if (!fechasConRegistro.contains(dia)) {
+                RegistroHabito registro = new RegistroHabito();
+                registro.setHabito(habito);
+                registro.setUsuario(habito.getUsuario());
+                registro.setFecha(dia);
+                registro.setEstado(EstadoHabito.NO_COMPLETADO);
+                registroHabitoRepository.save(registro);
+            }
+        }
     }
 }
