@@ -10,6 +10,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.Date;
 import java.util.List;
+/**
+ * Servicio de gestión de participaciones en desafíos.
+ *
+ * Una participación vincula a un usuario con un desafío y registra su estado
+ * (ACTIVO/SUPERADO/ABANDONADO) y los puntos ganados dentro de ese desafío.
+ */
 @Service
 public class ParticipacionDesafioService {
     private final ParticipacionDesafioRepository participacionDesafioRepository;
@@ -24,6 +30,11 @@ public class ParticipacionDesafioService {
         this.desafioRepository = desafioRepository;
         this.usuarioRepository = usuarioRepository;
     }
+
+    /**
+     * Inscribe al usuario en el desafío validando que no esté ya apuntado
+     * y que el desafío no haya finalizado. Inicializa el estado a ACTIVO y puntos a 0.
+     */
     public ParticipacionDesafio unirseADesafio(Integer desafioId, Long usuarioId) {
         if (participacionDesafioRepository.findByDesafioIdAndUsuarioId(desafioId, usuarioId).isPresent()) {
             throw new com.jordipatuel.GrowTogetherAPI.exception.BadRequestException("El usuario ya está participando en este desafío");
@@ -43,15 +54,28 @@ public class ParticipacionDesafioService {
         participacion.setPuntosGanadosEnDesafio(0);
         return participacionDesafioRepository.save(participacion);
     }
+    /**
+     * Devuelve los participantes de un desafío ordenados por puntos de mayor a menor.
+     * Usado para construir el ranking/leaderboard.
+     */
     public List<ParticipacionDesafio> obtenerRanking(Integer desafioId) {
         return participacionDesafioRepository.findByDesafioIdOrderByPuntosGanadosEnDesafioDesc(desafioId);
     }
+    /**
+     * Devuelve todos los desafíos en los que participa un usuario.
+     */
     public List<ParticipacionDesafio> obtenerPorUsuario(Long usuarioId) {
         return participacionDesafioRepository.findByUsuarioId(usuarioId);
     }
+    /**
+     * Devuelve todas las participaciones de un desafío concreto.
+     */
     public List<ParticipacionDesafio> obtenerPorDesafio(Integer desafioId) {
         return participacionDesafioRepository.findByDesafioId(desafioId);
     }
+    /**
+     * Devuelve todas las participaciones sin filtrar.
+     */
     public List<ParticipacionDesafio> obtenerTodos() {
         return participacionDesafioRepository.findAll();
     }

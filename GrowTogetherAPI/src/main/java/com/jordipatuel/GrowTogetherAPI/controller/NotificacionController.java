@@ -12,6 +12,13 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
+/**
+ * Controlador de gestión de notificaciones de hábitos.
+ *
+ * Todos los endpoints requieren JWT. La creación y listado verifican que el usuario
+ * es propietario del hábito asociado. La edición y eliminación verifican que es
+ * propietario de la notificación concreta navegando por notificacion → habito → usuario.
+ */
 @RestController
 @RequestMapping(Config.API_URL + "/notificaciones")
 public class NotificacionController {
@@ -20,6 +27,12 @@ public class NotificacionController {
     public NotificacionController(NotificacionService notificacionService) {
         this.notificacionService = notificacionService;
     }
+
+    /**
+     * Crea una notificación para el hábito indicado en el DTO.
+     * Verifica que el usuario autenticado es propietario del hábito.
+     * POST /api/v1/notificaciones
+     */
     @PreAuthorize("@habitoService.isOwner(#dto.habitoId, authentication.principal.id)")
     @PostMapping
     public ResponseEntity<NotificacionDTO> crearNotificacion(@Valid @RequestBody NotificacionCreateDTO dto) {
@@ -31,6 +44,11 @@ public class NotificacionController {
         Notificacion saved = notificacionService.crearNotificacion(notificacion, dto.getHabitoId());
         return new ResponseEntity<>(mapToDTO(saved), HttpStatus.CREATED);
     }
+    /**
+     * Lista las notificaciones de un hábito concreto.
+     * Verifica que el usuario autenticado es propietario del hábito.
+     * GET /api/v1/notificaciones/habito/{habitoId}
+     */
     @PreAuthorize("@habitoService.isOwner(#habitoId, authentication.principal.id)")
     @GetMapping("/habito/{habitoId}")
     public ResponseEntity<List<NotificacionDTO>> listarPorHabito(@PathVariable Integer habitoId) {
@@ -40,6 +58,10 @@ public class NotificacionController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(notificaciones);
     }
+    /**
+     * Actualiza una notificación. Verifica que el usuario es propietario de la notificación.
+     * PUT /api/v1/notificaciones/{id}
+     */
     @PreAuthorize("@notificacionService.isOwner(#id, authentication.principal.id)")
     @PutMapping("/{id}")
     public ResponseEntity<NotificacionDTO> actualizarNotificacion(
@@ -53,12 +75,19 @@ public class NotificacionController {
         Notificacion updated = notificacionService.actualizarNotificacion(id, datos);
         return ResponseEntity.ok(mapToDTO(updated));
     }
+    /**
+     * Elimina una notificación. Verifica que el usuario es propietario de la notificación.
+     * DELETE /api/v1/notificaciones/{id}
+     */
     @PreAuthorize("@notificacionService.isOwner(#id, authentication.principal.id)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarNotificacion(@PathVariable Integer id) {
         notificacionService.eliminarNotificacion(id);
         return ResponseEntity.noContent().build();
     }
+    /**
+     * Convierte una entidad {@link Notificacion} al DTO de respuesta.
+     */
     private NotificacionDTO mapToDTO(Notificacion n) {
         return new NotificacionDTO(
                 n.getId(),

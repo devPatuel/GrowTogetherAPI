@@ -8,14 +8,29 @@ import java.sql.Time;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+/**
+ * DTO para la creación de una notificación de recordatorio.
+ * Se recibe en el endpoint POST /api/v1/notificaciones.
+ * Cada notificación debe estar asociada a un hábito existente del usuario.
+ */
 public class NotificacionCreateDTO {
+
+    /** Mensaje del recordatorio que verá el usuario. */
     @NotBlank(message = "El mensaje no puede estar vacío")
     private String mensaje;
+
+    /** Hora a la que se enviará el recordatorio. Solo hora, sin fecha (HH:mm:ss). */
     @NotNull(message = "La hora programada no puede ser nula")
     private Time horaProgramada;
+
+    /** Frecuencia con la que se repite la notificación (ej: DIARIO). */
     @NotBlank(message = "La frecuencia no puede estar vacía")
     private String frecuencia;
+
+    /** Indica si la notificación está activa o pausada. */
     private boolean activa;
+
+    /** ID del hábito al que pertenece esta notificación. */
     @NotNull(message = "La notificación debe estar asociada a un hábito")
     private Integer habitoId;
 }

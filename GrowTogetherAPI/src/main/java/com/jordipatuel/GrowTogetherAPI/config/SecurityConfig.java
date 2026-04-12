@@ -15,6 +15,14 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
+/**
+ * Configuración principal de Spring Security.
+ *
+ * Define la cadena de filtros, las reglas de autorización por endpoint,
+ * la política de sesiones (stateless) y el CORS.
+ * Registra {@link RateLimitFilter} y {@link JwtAuthenticationFilter} antes
+ * del filtro estándar de autenticación de Spring.
+ */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -25,6 +33,17 @@ public class SecurityConfig {
         this.jwtAuthFilter = jwtAuthFilter;
         this.rateLimitFilter = rateLimitFilter;
     }
+
+    /**
+     * Configura la cadena de filtros de seguridad:
+     * - CORS habilitado con orígenes permitidos
+     * - CSRF desactivado (API stateless)
+     * - Sesiones stateless (sin HttpSession)
+     * - Rutas públicas: Swagger, /auth/**
+     * - Rutas admin: requieren rol ADMIN
+     * - Resto: requieren autenticación JWT
+     * - Filtros: RateLimitFilter → JwtAuthenticationFilter → resto de la cadena
+     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -43,6 +62,11 @@ public class SecurityConfig {
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
+    /**
+     * Configura los orígenes CORS permitidos:
+     * localhost (desarrollo), 10.0.2.2 (emulador Android) y 192.168.x.x (red local).
+     * En producción debe restringirse al dominio real de la aplicación.
+     */
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
@@ -54,6 +78,11 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
+    /**
+     * Expone el {@link AuthenticationManager} como bean para que
+     * {@link com.jordipatuel.GrowTogetherAPI.controller.AuthController}
+     * pueda usarlo en el proceso de login.
+     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();

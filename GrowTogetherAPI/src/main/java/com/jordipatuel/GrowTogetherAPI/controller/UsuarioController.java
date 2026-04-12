@@ -17,6 +17,13 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
+/**
+ * Controlador de operaciones sobre usuarios autenticados.
+ *
+ * Gestiona perfil, contraseña, preferencias, amigos y consulta de consejos.
+ * Todos los endpoints requieren JWT. Los endpoints de perfil y contraseña
+ * usan @PreAuthorize para garantizar que el usuario solo puede modificar sus propios datos.
+ */
 @Validated
 @RestController
 @RequestMapping(Config.API_URL + "/usuarios")
@@ -28,12 +35,21 @@ public class UsuarioController {
         this.usuarioService = usuarioService;
         this.consejoService = consejoService;
     }
+
+    /**
+     * Devuelve el perfil del usuario. Solo accesible por el propio usuario.
+     * GET /api/v1/usuarios/perfil/{id}
+     */
     @PreAuthorize("isAuthenticated() and #id == authentication.principal.id")
     @GetMapping("/perfil/{id}")
     public ResponseEntity<UsuarioDTO> obtenerPerfil(@PathVariable Long id) {
         Usuario usuario = usuarioService.obtenerPorId(id);
         return ResponseEntity.ok(mapToDTO(usuario));
     }
+    /**
+     * Actualiza nombre, email y/o foto del perfil. Solo accesible por el propio usuario.
+     * PUT /api/v1/usuarios/perfil/{id}
+     */
     @PreAuthorize("isAuthenticated() and #id == authentication.principal.id")
     @PutMapping("/perfil/{id}")
     public ResponseEntity<UsuarioDTO> editarPerfil(
@@ -43,6 +59,10 @@ public class UsuarioController {
                 id, request.getNombre(), request.getEmail(), request.getFoto());
         return ResponseEntity.ok(mapToDTO(usuarioEditado));
     }
+    /**
+     * Cambia la contraseña verificando la actual. Solo accesible por el propio usuario.
+     * PUT /api/v1/usuarios/perfil/{id}/contrasena
+     */
     @PreAuthorize("isAuthenticated() and #id == authentication.principal.id")
     @PutMapping("/perfil/{id}/contrasena")
     public ResponseEntity<?> cambiarContrasena(
@@ -51,6 +71,10 @@ public class UsuarioController {
         usuarioService.cambiarContrasena(id, request.getCurrentPassword(), request.getNewPassword());
         return ResponseEntity.ok(java.util.Map.of("message", "Contraseña actualizada con éxito"));
     }
+    /**
+     * Busca usuarios por nombre o email. Requiere mínimo 1 carácter y máximo 100.
+     * GET /api/v1/usuarios/buscar?q=
+     */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/buscar")
     public ResponseEntity<List<UsuarioDTO>> buscarUsuarios(@RequestParam @Size(min = 1, max = 100) String q) {
@@ -60,6 +84,10 @@ public class UsuarioController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(resultados);
     }
+    /**
+     * Agrega al usuario autenticado como amigo del usuario indicado (relación bidireccional).
+     * POST /api/v1/usuarios/amigos/{amigoId}
+     */
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/amigos/{amigoId}")
     public ResponseEntity<String> agregarAmigo(
@@ -69,6 +97,10 @@ public class UsuarioController {
         usuarioService.agregarAmigo(principal.getId(), amigoId);
         return ResponseEntity.ok("Amigo agregado correctamente");
     }
+    /**
+     * Devuelve la lista de amigos del usuario autenticado.
+     * GET /api/v1/usuarios/amigos
+     */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/amigos")
     public ResponseEntity<List<UsuarioDTO>> listarAmigos(Authentication authentication) {
@@ -79,6 +111,10 @@ public class UsuarioController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(amigos);
     }
+    /**
+     * Elimina la relación de amistad en ambas direcciones.
+     * DELETE /api/v1/usuarios/amigos/{amigoId}
+     */
     @PreAuthorize("isAuthenticated()")
     @DeleteMapping("/amigos/{amigoId}")
     public ResponseEntity<String> eliminarAmigo(
@@ -88,6 +124,10 @@ public class UsuarioController {
         usuarioService.eliminarAmigo(principal.getId(), amigoId);
         return ResponseEntity.ok("Amigo eliminado correctamente");
     }
+    /**
+     * Devuelve los consejos activos publicados hasta hoy.
+     * GET /api/v1/usuarios/consejos
+     */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/consejos")
     public ResponseEntity<List<ConsejoDTO>> verConsejosPublicos() {
@@ -98,6 +138,10 @@ public class UsuarioController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(consejosList);
     }
+    /**
+     * Actualiza las preferencias de tema e idioma del usuario. Solo accesible por el propio usuario.
+     * PUT /api/v1/usuarios/perfil/{id}/preferencias
+     */
     @PreAuthorize("isAuthenticated() and #id == authentication.principal.id")
     @PutMapping("/perfil/{id}/preferencias")
     public ResponseEntity<UsuarioDTO> actualizarPreferencias(
@@ -108,6 +152,9 @@ public class UsuarioController {
         return ResponseEntity.ok(mapToDTO(usuarioActualizado));
     }
 
+    /**
+     * Convierte una entidad {@link Usuario} al DTO de respuesta.
+     */
     private UsuarioDTO mapToDTO(Usuario usuario) {
         return new UsuarioDTO(
             usuario.getId(),
@@ -121,6 +168,12 @@ public class UsuarioController {
             usuario.getIdioma()
         );
     }
+    // Usamos estos DTOs dentro del controlador para no tener que crear clases separadas
+    // para peticiones sencillas que solo se usan aquí.
+
+    /**
+     * DTO interno para editar nombre, email y foto del perfil.
+     */
     @Data
     public static class EditarPerfilRequest {
         @Size(min = 2, max = 100, message = "El nombre debe tener entre 2 y 100 caracteres")
@@ -128,9 +181,11 @@ public class UsuarioController {
         @Email(message = "El email debe ser válido")
         @Size(max = 200, message = "El email no puede superar los 200 caracteres")
         private String email;
-        @Size(max = 500, message = "La URL de la foto no puede superar los 500 caracteres")
         private String foto;
     }
+    /**
+     * DTO interno para cambio de contraseña (contraseña actual + nueva con validaciones).
+     */
     @Data
     public static class CambiarContrasenaRequest {
         @NotBlank(message = "La contraseña actual es obligatoria")
@@ -141,6 +196,9 @@ public class UsuarioController {
                 message = "La contraseña debe contener al menos una mayúscula, una minúscula y un dígito")
         private String newPassword;
     }
+    /**
+     * DTO interno para actualizar tema e idioma.
+     */
     @Data
     public static class PreferenciasRequest {
         private String tema;

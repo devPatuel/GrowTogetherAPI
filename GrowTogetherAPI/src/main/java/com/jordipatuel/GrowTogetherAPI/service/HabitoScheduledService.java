@@ -9,6 +9,14 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+/**
+ * Servicio de tareas programadas relacionadas con hábitos.
+ *
+ * Se ejecuta automáticamente cada noche a las 00:01 para rellenar los registros
+ * de hábitos que no fueron completados el día anterior, marcándolos como NO_COMPLETADO.
+ * Esto garantiza que el historial y las estadísticas sean consistentes sin depender
+ * de que el usuario interactúe con la app.
+ */
 @Service
 public class HabitoScheduledService {
 
@@ -23,6 +31,12 @@ public class HabitoScheduledService {
         this.registroHabitoService = registroHabitoService;
     }
 
+    /**
+     * Tarea programada que se ejecuta a las 00:01 cada día.
+     * Recorre todos los hábitos activos y delega en {@link RegistroHabitoService#rellenarNoCompletados}
+     * para marcar como NO_COMPLETADO los días sin registro.
+     * Los errores en un hábito concreto se logean y no interrumpen el resto del proceso.
+     */
     @Scheduled(cron = "0 1 0 * * *")
     public void marcarNoCompletadosDiario() {
         log.info("Ejecutando tarea programada: rellenar hábitos no completados");

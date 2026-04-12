@@ -17,6 +17,13 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.stream.Collectors;
+/**
+ * Controlador de gestión de desafíos.
+ *
+ * Permite crear desafíos, ver los disponibles, unirse a ellos,
+ * consultar el ranking de participantes y eliminarlos.
+ * Todos los endpoints requieren JWT. Solo el creador del desafío puede eliminarlo.
+ */
 @RestController
 @RequestMapping(Config.API_URL + "/desafios")
 public class DesafioController {
@@ -27,6 +34,11 @@ public class DesafioController {
         this.desafioService = desafioService;
         this.participacionDesafioService = participacionDesafioService;
     }
+
+    /**
+     * Crea un nuevo desafío con el usuario autenticado como creador.
+     * POST /api/v1/desafios
+     */
     @PreAuthorize("isAuthenticated()")
     @PostMapping
     public ResponseEntity<DesafioDTO> crearDesafio(@Valid @RequestBody DesafioCreateDTO dto, Authentication authentication) {
@@ -39,6 +51,10 @@ public class DesafioController {
         Desafio saved = desafioService.crearDesafio(desafio, principal.getId());
         return new ResponseEntity<>(mapToDTO(saved), HttpStatus.CREATED);
     }
+    /**
+     * Devuelve los desafíos activos (fecha de fin posterior a ahora).
+     * GET /api/v1/desafios/activos
+     */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/activos")
     public ResponseEntity<List<DesafioDTO>> verRetosDisponibles() {
@@ -48,6 +64,10 @@ public class DesafioController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(desafios);
     }
+    /**
+     * Inscribe al usuario autenticado en el desafío indicado.
+     * POST /api/v1/desafios/{id}/unirse
+     */
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/{id}/unirse")
     public ResponseEntity<ParticipacionDesafioDTO> unirseADesafio(
@@ -57,6 +77,10 @@ public class DesafioController {
         ParticipacionDesafio participacion = participacionDesafioService.unirseADesafio(id, principal.getId());
         return new ResponseEntity<>(mapParticipacionToDTO(participacion), HttpStatus.CREATED);
     }
+    /**
+     * Devuelve el ranking de participantes del desafío ordenado por puntos.
+     * GET /api/v1/desafios/{id}/ranking
+     */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}/ranking")
     public ResponseEntity<List<ParticipacionDesafioDTO>> verRanking(@PathVariable Integer id) {
@@ -66,18 +90,29 @@ public class DesafioController {
                 .collect(Collectors.toList());
         return ResponseEntity.ok(ranking);
     }
+    /**
+     * Elimina (soft delete) el desafío. Solo accesible por el creador.
+     * DELETE /api/v1/desafios/{id}
+     */
     @PreAuthorize("@desafioService.isCreator(#id, authentication.principal.id)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> borrarDesafio(@PathVariable Integer id) {
         desafioService.eliminarDesafio(id);
         return ResponseEntity.noContent().build();
     }
+    /**
+     * Devuelve el detalle de un desafío concreto.
+     * GET /api/v1/desafios/{id}
+     */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")
     public ResponseEntity<DesafioDTO> verDesafio(@PathVariable Integer id) {
         Desafio desafio = desafioService.obtenerPorId(id);
         return ResponseEntity.ok(mapToDTO(desafio));
     }
+    /**
+     * Convierte una entidad {@link Desafio} al DTO de respuesta.
+     */
     private DesafioDTO mapToDTO(Desafio desafio) {
         DesafioDTO dto = new DesafioDTO();
         dto.setId(desafio.getId());
@@ -91,6 +126,9 @@ public class DesafioController {
         }
         return dto;
     }
+    /**
+     * Convierte una entidad {@link ParticipacionDesafio} al DTO de respuesta.
+     */
     private ParticipacionDesafioDTO mapParticipacionToDTO(ParticipacionDesafio p) {
         ParticipacionDesafioDTO dto = new ParticipacionDesafioDTO();
         dto.setId(p.getId());

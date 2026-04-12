@@ -12,6 +12,17 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Filtro de limitación de peticiones para los endpoints de login y registro.
+ *
+ * Limita a {@code MAX_ATTEMPTS} (10) peticiones POST por IP en una ventana
+ * deslizante de {@code WINDOW_MS} (60 segundos). Si se supera el límite,
+ * devuelve HTTP 429 con un mensaje de error.
+ *
+ * El conteo se almacena en memoria con un {@link ConcurrentHashMap} thread-safe.
+ * Limitación: el conteo se pierde al reiniciar el servidor y no funciona
+ * en entornos multi-instancia (cada servidor lleva su propio contador independiente).
+ */
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
@@ -20,6 +31,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private final Map<String, RateInfo> attempts = new ConcurrentHashMap<>();
 
+    /**
+     * Aplica el rate limiting solo a POST /api/v1/auth/login y /api/v1/auth/registrar.
+     * El resto de peticiones pasan directamente.
+     */
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
@@ -57,6 +72,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    /**
+     * Obtiene la IP real del cliente teniendo en cuenta el header X-Forwarded-For
+     * en caso de estar detrás de un proxy o balanceador.
+     */
     private String getClientIp(HttpServletRequest request) {
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isEmpty()) {
@@ -65,6 +84,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return request.getRemoteAddr();
     }
 
+    /** Estructura interna que almacena el inicio de la ventana y el contador de peticiones. */
     private static class RateInfo {
         final long windowStart;
         final AtomicInteger count;

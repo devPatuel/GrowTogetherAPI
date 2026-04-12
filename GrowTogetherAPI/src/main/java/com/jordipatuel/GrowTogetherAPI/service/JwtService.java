@@ -17,6 +17,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
+/**
+ * Servicio encargado de toda la lógica de tokens JWT.
+ *
+ * Genera tokens firmados con HMAC-SHA256 incluyendo el claim {@code tv} (tokenVersion)
+ * para permitir la revocación. Valida tokens comprobando firma, expiración y tokenVersion.
+ *
+ * El secreto se inyecta desde la variable de entorno {@code JWT_SECRET} (obligatorio).
+ * La expiración por defecto es 24h (86400000 ms), configurable via {@code jwt.expiration}.
+ */
 @Service
 public class JwtService {
 
@@ -26,19 +35,32 @@ public class JwtService {
     @Value("${jwt.expiration:86400000}")
     private long jwtExpiration;
 
+    /**
+     * Extrae el email del usuario (campo {@code sub}) del token.
+     */
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
+    /**
+     * Extrae el claim {@code tv} (tokenVersion) del token.
+     */
     public Integer extractTokenVersion(String token) {
         return extractClaim(token, claims -> claims.get("tv", Integer.class));
     }
 
+    /**
+     * Extrae cualquier claim del token aplicando la función indicada.
+     */
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
         return claimsResolver.apply(claims);
     }
 
+    /**
+     * Genera un token JWT a partir de un objeto {@link Authentication}.
+     * Incluye el claim {@code tv} si el principal es un {@link AuthUserDetails}.
+     */
     public String generateToken(Authentication authentication) {
         Map<String, Object> claims = new HashMap<>();
         if (authentication.getPrincipal() instanceof AuthUserDetails authUser) {
@@ -47,6 +69,10 @@ public class JwtService {
         return buildToken(claims, authentication.getName(), jwtExpiration);
     }
 
+    /**
+     * Genera un token JWT a partir de un {@link UserDetails}.
+     * Sobrecarga usada cuando no hay contexto de autenticación disponible.
+     */
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
         if (userDetails instanceof AuthUserDetails authUser) {
@@ -55,6 +81,11 @@ public class JwtService {
         return buildToken(claims, userDetails.getUsername(), jwtExpiration);
     }
 
+    /**
+     * Valida el token comprobando tres cosas:
+     * que el email coincida con el usuario, que no haya expirado,
+     * y que el {@code tv} del token coincida con el tokenVersion actual del usuario.
+     */
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
         if (!username.equals(userDetails.getUsername()) || isTokenExpired(token)) {
@@ -69,14 +100,23 @@ public class JwtService {
         return true;
     }
 
+    /**
+     * Comprueba si el token ha superado su fecha de expiración.
+     */
     private boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
 
+    /**
+     * Extrae la fecha de expiración del token.
+     */
     private Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
     }
 
+    /**
+     * Construye y firma el token JWT con los claims, subject, fechas y clave HMAC.
+     */
     private String buildToken(Map<String, Object> extraClaims, String username, long expiration) {
         return Jwts.builder()
                 .setClaims(extraClaims)
@@ -87,6 +127,9 @@ public class JwtService {
                 .compact();
     }
 
+    /**
+     * Parsea y devuelve todos los claims del token verificando la firma.
+     */
     private Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSignInKey())
@@ -95,6 +138,9 @@ public class JwtService {
                 .getBody();
     }
 
+    /**
+     * Decodifica el secreto en Base64 y devuelve la clave HMAC para firmar/verificar tokens.
+     */
     private Key getSignInKey() {
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         return Keys.hmacShaKeyFor(keyBytes);

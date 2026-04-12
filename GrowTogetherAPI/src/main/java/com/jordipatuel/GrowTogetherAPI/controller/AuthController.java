@@ -18,6 +18,13 @@ import org.springframework.web.bind.annotation.*;
 import com.jordipatuel.GrowTogetherAPI.service.AuditService;
 import jakarta.servlet.http.HttpServletRequest;
 
+/**
+ * Controlador de autenticación.
+ *
+ * Gestiona los endpoints públicos de registro, login y recuperación de contraseña.
+ * No requiere JWT. El login registra en el audit log tanto los intentos exitosos
+ * como los fallidos.
+ */
 @RestController
 @RequestMapping(Config.API_URL + "/auth")
 public class AuthController {
@@ -35,6 +42,10 @@ public class AuthController {
         this.auditService = auditService;
     }
 
+    /**
+     * Registra un nuevo usuario. Valida el DTO de entrada y devuelve el usuario creado.
+     * POST /api/v1/auth/registrar
+     */
     @PostMapping("/registrar")
     public ResponseEntity<UsuarioDTO> registrarUsuario(@Valid @RequestBody UsuarioCreateDTO dto) {
         Usuario usuario = new Usuario();
@@ -45,6 +56,12 @@ public class AuthController {
         Usuario nuevoUsuario = usuarioService.registrarUsuario(usuario);
         return new ResponseEntity<>(mapToDTO(nuevoUsuario), HttpStatus.CREATED);
     }
+    /**
+     * Autentica al usuario con email y contraseña y devuelve el JWT junto con
+     * los datos básicos del usuario (id, nombre, email, tema, idioma).
+     * Registra el resultado en el audit log. Devuelve 401 si las credenciales son incorrectas.
+     * POST /api/v1/auth/login
+     */
     @PostMapping("/login")
     public ResponseEntity<?> iniciarSesion(@Valid @RequestBody LoginRequest loginRequest, HttpServletRequest request) {
         try {
@@ -75,10 +92,18 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(java.util.Map.of("error", "Credenciales inválidas"));
         }
     }
+    /**
+     * Stub de recuperación de contraseña. Siempre devuelve 200 con un mensaje genérico
+     * independientemente de si el email existe, para no filtrar información.
+     * POST /api/v1/auth/recuperar
+     */
     @PostMapping("/recuperar")
     public ResponseEntity<String> recuperarContrasena(@RequestBody RecuperarRequest request) {
         return new ResponseEntity<>("Si el correo existe, enviaremos un email de recuperación", HttpStatus.OK);
     }
+    /**
+     * Convierte una entidad {@link Usuario} al DTO de respuesta.
+     */
     private UsuarioDTO mapToDTO(Usuario usuario) {
         return new UsuarioDTO(
             usuario.getId(),
@@ -92,6 +117,9 @@ public class AuthController {
             usuario.getIdioma()
         );
     }
+    /**
+     * DTO interno para la petición de login (email + password).
+     */
     @Data
     public static class LoginRequest {
         @NotBlank(message = "El email es requerido")
@@ -99,6 +127,9 @@ public class AuthController {
         @NotBlank(message = "La contraseña es requerida")
         private String password;
     }
+    /**
+     * DTO interno para la petición de recuperación de contraseña (email).
+     */
     @Data
     public static class RecuperarRequest {
         private String email;

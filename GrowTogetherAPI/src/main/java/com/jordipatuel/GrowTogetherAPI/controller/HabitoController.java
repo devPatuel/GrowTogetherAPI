@@ -26,6 +26,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+/**
+ * Controlador de gestión de hábitos.
+ *
+ * Expone el CRUD de hábitos, las acciones de completar/descompletar,
+ * el progreso y el historial. Todos los endpoints requieren JWT.
+ * Los endpoints que modifican o consultan un hábito concreto verifican via @PreAuthorize
+ * que el usuario autenticado es el propietario del hábito antes de ejecutar la acción.
+ */
 @RestController
 @RequestMapping(Config.API_URL + "/habitos")
 public class HabitoController {
@@ -36,6 +44,11 @@ public class HabitoController {
         this.habitoService = habitoService;
         this.registroHabitoService = registroHabitoService;
     }
+
+    /**
+     * Crea un nuevo hábito para el usuario autenticado.
+     * POST /api/v1/habitos
+     */
     @PreAuthorize("isAuthenticated()")
     @PostMapping
     public ResponseEntity<HabitoDTO> crearHabito(
@@ -56,6 +69,11 @@ public class HabitoController {
         Habito nuevoHabito = habitoService.crearHabito(habito, principal.getId());
         return new ResponseEntity<>(mapToDTO(nuevoHabito, principal.getId()), HttpStatus.CREATED);
     }
+    /**
+     * Lista los hábitos activos del usuario. Acepta fecha opcional para saber
+     * si el hábito estaba completado en un día concreto (por defecto hoy).
+     * GET /api/v1/habitos/usuario/{usuarioId}
+     */
     @PreAuthorize("isAuthenticated() and #usuarioId == authentication.principal.id")
     @GetMapping("/usuario/{usuarioId}")
     public ResponseEntity<List<HabitoDTO>> listarHabitosUsuario(
@@ -65,6 +83,10 @@ public class HabitoController {
                 .stream().map(h -> mapToDTO(h, usuarioId, fecha)).collect(Collectors.toList());
         return ResponseEntity.ok(habitos);
     }
+    /**
+     * Edita los campos del hábito. Solo accesible por el propietario.
+     * PUT /api/v1/habitos/{id}
+     */
     @PreAuthorize("@habitoService.isOwner(#id, authentication.principal.id)")
     @PutMapping("/{id}")
     public ResponseEntity<HabitoDTO> editarHabito(
@@ -86,12 +108,21 @@ public class HabitoController {
         Habito actualizado = habitoService.editarHabito(id, habitoInfo);
         return ResponseEntity.ok(mapToDTO(actualizado, principal.getId()));
     }
+    /**
+     * Elimina (soft delete) el hábito. Solo accesible por el propietario.
+     * DELETE /api/v1/habitos/{id}
+     */
     @PreAuthorize("@habitoService.isOwner(#id, authentication.principal.id)")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminarHabito(@PathVariable Integer id) {
         habitoService.eliminarHabito(id);
         return ResponseEntity.noContent().build();
     }
+    /**
+     * Marca el hábito como completado en la fecha indicada (por defecto hoy).
+     * Solo accesible por el propietario.
+     * POST /api/v1/habitos/{id}/completar
+     */
     @PreAuthorize("@habitoService.isOwner(#id, authentication.principal.id)")
     @PostMapping("/{id}/completar")
     public ResponseEntity<HabitoDTO> completarHabito(
@@ -102,6 +133,11 @@ public class HabitoController {
         Habito habito = habitoService.completarHabito(id, principal.getId(), fecha);
         return ResponseEntity.ok(mapToDTO(habito, principal.getId(), fecha));
     }
+    /**
+     * Revierte el hábito a PENDIENTE en la fecha indicada (por defecto hoy).
+     * Solo accesible por el propietario.
+     * POST /api/v1/habitos/{id}/descompletar
+     */
     @PreAuthorize("@habitoService.isOwner(#id, authentication.principal.id)")
     @PostMapping("/{id}/descompletar")
     public ResponseEntity<HabitoDTO> descompletarHabito(
@@ -112,6 +148,11 @@ public class HabitoController {
         Habito habito = habitoService.descompletarHabito(id, principal.getId(), fecha);
         return ResponseEntity.ok(mapToDTO(habito, principal.getId(), fecha));
     }
+    /**
+     * Devuelve el progreso actual del hábito (rachaActual y rachaMaxima).
+     * Solo accesible por el propietario.
+     * GET /api/v1/habitos/{id}/progreso
+     */
     @PreAuthorize("@habitoService.isOwner(#id, authentication.principal.id)")
     @GetMapping("/{id}/progreso")
     public ResponseEntity<HabitoDTO> obtenerProgreso(
@@ -121,6 +162,12 @@ public class HabitoController {
         Habito progreso = habitoService.obtenerProgreso(id);
         return ResponseEntity.ok(mapToDTO(progreso, principal.getId()));
     }
+    /**
+     * Devuelve el historial del hábito en un rango de fechas.
+     * Antes de devolver los datos, rellena los días sin registro como NO_COMPLETADO (lazy fill).
+     * Solo accesible por el propietario.
+     * GET /api/v1/habitos/{id}/historial
+     */
     @PreAuthorize("@habitoService.isOwner(#id, authentication.principal.id)")
     @GetMapping("/{id}/historial")
     public ResponseEntity<List<RegistroHabitoHistorialDTO>> obtenerHistorial(
@@ -139,10 +186,17 @@ public class HabitoController {
         return ResponseEntity.ok(historial);
     }
 
+    /**
+     * Convierte un hábito a DTO usando hoy como fecha de referencia para completadoHoy.
+     */
     private HabitoDTO mapToDTO(Habito habito, Long usuarioId) {
         return mapToDTO(habito, usuarioId, null);
     }
 
+    /**
+     * Convierte un hábito a DTO indicando la fecha de referencia para completadoHoy
+     * y calculando el progreso mensual real.
+     */
     private HabitoDTO mapToDTO(Habito habito, Long usuarioId, LocalDate fecha) {
         boolean completadoHoy = habitoService.estaCompletadoEnFecha(habito.getId(), usuarioId, fecha);
         HabitoDTO dto = new HabitoDTO();
@@ -164,6 +218,11 @@ public class HabitoController {
         return dto;
     }
 
+    /**
+     * Calcula el porcentaje de días completados en el mes actual respecto a los días esperados.
+     * Para hábitos DIARIO cuenta todos los días del mes hasta hoy.
+     * Para hábitos PERSONALIZADO cuenta solo los días programados en diasSemana.
+     */
     private double calcularProgresoMensual(Habito habito, Long usuarioId) {
         LocalDate hoy = LocalDate.now();
         LocalDate inicioMes = hoy.withDayOfMonth(1);
@@ -204,6 +263,9 @@ public class HabitoController {
         return Math.min((double) completados / diasEsperados, 1.0);
     }
 
+    /**
+     * Convierte un Set de Strings con nombres de días a un Set de {@link DiaSemana}.
+     */
     private Set<DiaSemana> parseDias(Set<String> dias) {
         if (dias == null || dias.isEmpty()) return new HashSet<>();
         return dias.stream()

@@ -23,6 +23,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+/**
+ * Controlador de operaciones administrativas.
+ *
+ * Todos los endpoints requieren rol ADMIN. Cualquier acción sensible
+ * (reset de contraseña, eliminar usuario, gestión de consejos) queda registrada
+ * en el audit log con la IP del admin que la ejecutó.
+ */
 @RestController
 @RequestMapping(Config.API_URL + "/admin")
 public class AdminController {
@@ -41,6 +48,12 @@ public class AdminController {
         this.desafioService = desafioService;
         this.auditService = auditService;
     }
+
+    /**
+     * Devuelve métricas globales de la plataforma: total de usuarios,
+     * hábitos completados hoy y desafíos activos.
+     * GET /api/v1/admin/metricas
+     */
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/metricas")
     public ResponseEntity<Map<String, Object>> verMetricas() {
@@ -50,6 +63,12 @@ public class AdminController {
         metricas.put("desafiosActivos", desafioService.contarDesafiosActivos());
         return ResponseEntity.ok(metricas);
     }
+    /**
+     * Resetea la contraseña de un usuario sin verificar la actual.
+     * Valida la nueva contraseña con la misma política que el registro.
+     * Registra la acción en el audit log.
+     * PUT /api/v1/admin/usuarios/{id}/resetear-contrasena
+     */
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/usuarios/{id}/resetear-contrasena")
     public ResponseEntity<String> resetearContrasena(
@@ -71,6 +90,11 @@ public class AdminController {
                 "Contraseña reseteada por admin", request.getRemoteAddr());
         return ResponseEntity.ok("Contraseña reseteada correctamente");
     }
+    /**
+     * Crea un nuevo consejo asignando el admin autenticado como creador.
+     * Registra la acción en el audit log.
+     * POST /api/v1/admin/recursos
+     */
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/recursos")
     public ResponseEntity<ConsejoDTO> subirRecurso(
@@ -92,6 +116,10 @@ public class AdminController {
                 "Recurso creado: " + guardado.getTitulo(), request.getRemoteAddr());
         return new ResponseEntity<>(mapToDTO(guardado), HttpStatus.CREATED);
     }
+    /**
+     * Devuelve todos los consejos sin filtrar (incluye inactivos y futuros).
+     * GET /api/v1/admin/recursos
+     */
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/recursos")
     public ResponseEntity<List<ConsejoDTO>> listarTodosLosRecursos() {
@@ -99,6 +127,10 @@ public class AdminController {
                 .map(this::mapToDTO).collect(Collectors.toList());
         return ResponseEntity.ok(recursos);
     }
+    /**
+     * Edita un consejo existente. Registra la acción en el audit log.
+     * PUT /api/v1/admin/recursos/{id}
+     */
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/recursos/{id}")
     public ResponseEntity<ConsejoDTO> editarRecurso(
@@ -120,6 +152,10 @@ public class AdminController {
                 "Recurso editado: " + actualizado.getTitulo(), request.getRemoteAddr());
         return ResponseEntity.ok(mapToDTO(actualizado));
     }
+    /**
+     * Elimina un consejo. Registra la acción en el audit log antes de eliminar.
+     * DELETE /api/v1/admin/recursos/{id}
+     */
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/recursos/{id}")
     public ResponseEntity<Void> eliminarRecurso(
@@ -133,6 +169,11 @@ public class AdminController {
         consejoService.eliminarConsejo(id);
         return ResponseEntity.noContent().build();
     }
+    /**
+     * Desactiva un usuario (soft delete) e invalida sus sesiones activas.
+     * Registra la acción en el audit log.
+     * DELETE /api/v1/admin/usuarios/{id}
+     */
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/usuarios/{id}")
     public ResponseEntity<Void> eliminarUsuario(
@@ -146,6 +187,10 @@ public class AdminController {
         usuarioService.eliminarUsuario(id);
         return ResponseEntity.noContent().build();
     }
+    /**
+     * Devuelve los últimos 100 registros del audit log.
+     * GET /api/v1/admin/audit
+     */
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/audit")
     public ResponseEntity<List<AuditLogDTO>> verAuditLog() {
@@ -153,6 +198,10 @@ public class AdminController {
                 .map(this::mapToAuditDTO).collect(Collectors.toList());
         return ResponseEntity.ok(logs);
     }
+    /**
+     * Devuelve los últimos 100 registros del audit log de un usuario concreto.
+     * GET /api/v1/admin/audit/usuario/{usuarioId}
+     */
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/audit/usuario/{usuarioId}")
     public ResponseEntity<List<AuditLogDTO>> verAuditPorUsuario(@PathVariable Long usuarioId) {
@@ -160,12 +209,18 @@ public class AdminController {
                 .map(this::mapToAuditDTO).collect(Collectors.toList());
         return ResponseEntity.ok(logs);
     }
+    /**
+     * Convierte una entidad {@link AuditLog} al DTO de respuesta.
+     */
     private AuditLogDTO mapToAuditDTO(AuditLog log) {
         return new AuditLogDTO(
                 log.getId(), log.getAccion(), log.getEntidad(), log.getEntidadId(),
                 log.getUsuarioId(), log.getUsuarioEmail(), log.getDetalle(),
                 log.getIp(), log.getFecha());
     }
+    /**
+     * Convierte una entidad {@link Consejo} al DTO de respuesta.
+     */
     private ConsejoDTO mapToDTO(Consejo consejo) {
         return new ConsejoDTO(
                 consejo.getId(),
