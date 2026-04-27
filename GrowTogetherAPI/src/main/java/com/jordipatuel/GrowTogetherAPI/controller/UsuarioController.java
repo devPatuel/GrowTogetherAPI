@@ -2,10 +2,12 @@ package com.jordipatuel.GrowTogetherAPI.controller;
 import com.jordipatuel.GrowTogetherAPI.config.AuthUserDetails;
 import com.jordipatuel.GrowTogetherAPI.config.Config;
 import com.jordipatuel.GrowTogetherAPI.dto.UsuarioDTO;
+import com.jordipatuel.GrowTogetherAPI.dto.UsuarioPublicoDTO;
 import com.jordipatuel.GrowTogetherAPI.dto.ConsejoDTO;
-import com.jordipatuel.GrowTogetherAPI.model.Usuario;
+import com.jordipatuel.GrowTogetherAPI.dto.SolicitudAmistadDTO;
 import com.jordipatuel.GrowTogetherAPI.service.UsuarioService;
 import com.jordipatuel.GrowTogetherAPI.service.ConsejoService;
+import com.jordipatuel.GrowTogetherAPI.service.SolicitudAmistadService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.Data;
@@ -16,13 +18,15 @@ import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import java.util.stream.Collectors;
 /**
  * Controlador de operaciones sobre usuarios autenticados.
  *
  * Gestiona perfil, contraseña, preferencias, amigos y consulta de consejos.
  * Todos los endpoints requieren JWT. Los endpoints de perfil y contraseña
  * usan @PreAuthorize para garantizar que el usuario solo puede modificar sus propios datos.
+ *
+ * Todos los endpoints consumen y devuelven DTOs: el mapeo a/desde las entidades
+ * vive en los services correspondientes.
  */
 @Validated
 @RestController
@@ -30,10 +34,14 @@ import java.util.stream.Collectors;
 public class UsuarioController {
     private final UsuarioService usuarioService;
     private final ConsejoService consejoService;
+    private final SolicitudAmistadService solicitudAmistadService;
     @Autowired
-    public UsuarioController(UsuarioService usuarioService, ConsejoService consejoService) {
+    public UsuarioController(UsuarioService usuarioService,
+                             ConsejoService consejoService,
+                             SolicitudAmistadService solicitudAmistadService) {
         this.usuarioService = usuarioService;
         this.consejoService = consejoService;
+        this.solicitudAmistadService = solicitudAmistadService;
     }
 
     /**
@@ -43,8 +51,7 @@ public class UsuarioController {
     @PreAuthorize("isAuthenticated() and #id == authentication.principal.id")
     @GetMapping("/perfil/{id}")
     public ResponseEntity<UsuarioDTO> obtenerPerfil(@PathVariable Long id) {
-        Usuario usuario = usuarioService.obtenerPorId(id);
-        return ResponseEntity.ok(mapToDTO(usuario));
+        return ResponseEntity.ok(usuarioService.obtenerPorId(id));
     }
     /**
      * Actualiza nombre, email y/o foto del perfil. Solo accesible por el propio usuario.
@@ -55,9 +62,8 @@ public class UsuarioController {
     public ResponseEntity<UsuarioDTO> editarPerfil(
             @PathVariable Long id,
             @Valid @RequestBody EditarPerfilRequest request) {
-        Usuario usuarioEditado = usuarioService.editarPerfil(
-                id, request.getNombre(), request.getEmail(), request.getFoto());
-        return ResponseEntity.ok(mapToDTO(usuarioEditado));
+        return ResponseEntity.ok(usuarioService.editarPerfil(
+                id, request.getNombre(), request.getEmail(), request.getFoto()));
     }
     /**
      * Cambia la contraseña verificando la actual. Solo accesible por el propio usuario.
@@ -78,11 +84,7 @@ public class UsuarioController {
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/buscar")
     public ResponseEntity<List<UsuarioDTO>> buscarUsuarios(@RequestParam @Size(min = 1, max = 100) String q) {
-        List<UsuarioDTO> resultados = usuarioService.buscarPorNombreOEmail(q)
-                .stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(resultados);
+        return ResponseEntity.ok(usuarioService.buscarPorNombreOEmail(q));
     }
     /**
      * Agrega al usuario autenticado como amigo del usuario indicado (relación bidireccional).
@@ -105,11 +107,7 @@ public class UsuarioController {
     @GetMapping("/amigos")
     public ResponseEntity<List<UsuarioDTO>> listarAmigos(Authentication authentication) {
         AuthUserDetails principal = (AuthUserDetails) authentication.getPrincipal();
-        List<UsuarioDTO> amigos = usuarioService.obtenerAmigos(principal.getId())
-                .stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(amigos);
+        return ResponseEntity.ok(usuarioService.obtenerAmigos(principal.getId()));
     }
     /**
      * Elimina la relación de amistad en ambas direcciones.
@@ -131,12 +129,7 @@ public class UsuarioController {
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/consejos")
     public ResponseEntity<List<ConsejoDTO>> verConsejosPublicos() {
-        List<ConsejoDTO> consejosList = consejoService.obtenerConsejosVisibles()
-                .stream().map(c -> new ConsejoDTO(
-                        c.getId(), c.getTitulo(), c.getDescripcion(),
-                        c.getFechaPublicacion(), c.isActivo(), c.getCreadorId()))
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(consejosList);
+        return ResponseEntity.ok(consejoService.obtenerConsejosVisibles());
     }
     /**
      * Actualiza las preferencias de tema e idioma del usuario. Solo accesible por el propio usuario.
@@ -147,27 +140,98 @@ public class UsuarioController {
     public ResponseEntity<UsuarioDTO> actualizarPreferencias(
             @PathVariable Long id,
             @RequestBody PreferenciasRequest request) {
-        Usuario usuarioActualizado = usuarioService.actualizarPreferencias(
-                id, request.getTema(), request.getIdioma());
-        return ResponseEntity.ok(mapToDTO(usuarioActualizado));
+        return ResponseEntity.ok(usuarioService.actualizarPreferencias(
+                id, request.getTema(), request.getIdioma()));
     }
 
     /**
-     * Convierte una entidad {@link Usuario} al DTO de respuesta.
+     * Devuelve los datos públicos de cualquier usuario por su ID.
+     * Usado por el buscador de amigos para poder localizar a alguien conocido por su ID.
+     * No expone email ni rol.
+     * GET /api/v1/usuarios/publico/{id}
      */
-    private UsuarioDTO mapToDTO(Usuario usuario) {
-        return new UsuarioDTO(
-            usuario.getId(),
-            usuario.getNombre(),
-            usuario.getEmail(),
-            usuario.getRol(),
-            usuario.getFechaRegistro(),
-            usuario.getPuntosTotales(),
-            usuario.getFoto(),
-            usuario.getTema(),
-            usuario.getIdioma()
-        );
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/publico/{id}")
+    public ResponseEntity<UsuarioPublicoDTO> obtenerPublico(@PathVariable Long id) {
+        return ResponseEntity.ok(usuarioService.obtenerPublicoPorId(id));
     }
+
+    /**
+     * Envía una solicitud de amistad al usuario indicado (requiere autenticación).
+     * POST /api/v1/usuarios/amistades/solicitudes/{destinatarioId}
+     */
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/amistades/solicitudes/{destinatarioId}")
+    public ResponseEntity<SolicitudAmistadDTO> enviarSolicitud(
+            @PathVariable Long destinatarioId,
+            Authentication authentication) {
+        AuthUserDetails principal = (AuthUserDetails) authentication.getPrincipal();
+        return ResponseEntity.ok(solicitudAmistadService.enviarSolicitud(principal.getId(), destinatarioId));
+    }
+
+    /**
+     * Devuelve las solicitudes de amistad pendientes recibidas por el usuario autenticado.
+     * GET /api/v1/usuarios/amistades/solicitudes/recibidas
+     */
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/amistades/solicitudes/recibidas")
+    public ResponseEntity<List<SolicitudAmistadDTO>> listarRecibidas(Authentication authentication) {
+        AuthUserDetails principal = (AuthUserDetails) authentication.getPrincipal();
+        return ResponseEntity.ok(solicitudAmistadService.listarRecibidasPendientes(principal.getId()));
+    }
+
+    /**
+     * Devuelve las solicitudes de amistad pendientes enviadas por el usuario autenticado.
+     * GET /api/v1/usuarios/amistades/solicitudes/enviadas
+     */
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/amistades/solicitudes/enviadas")
+    public ResponseEntity<List<SolicitudAmistadDTO>> listarEnviadas(Authentication authentication) {
+        AuthUserDetails principal = (AuthUserDetails) authentication.getPrincipal();
+        return ResponseEntity.ok(solicitudAmistadService.listarEnviadasPendientes(principal.getId()));
+    }
+
+    /**
+     * Acepta una solicitud de amistad pendiente. Solo el destinatario puede hacerlo.
+     * Crea la relación de amistad bidireccional.
+     * PUT /api/v1/usuarios/amistades/solicitudes/{id}/aceptar
+     */
+    @PreAuthorize("isAuthenticated()")
+    @PutMapping("/amistades/solicitudes/{id}/aceptar")
+    public ResponseEntity<SolicitudAmistadDTO> aceptarSolicitud(
+            @PathVariable Long id,
+            Authentication authentication) {
+        AuthUserDetails principal = (AuthUserDetails) authentication.getPrincipal();
+        return ResponseEntity.ok(solicitudAmistadService.aceptar(id, principal.getId()));
+    }
+
+    /**
+     * Rechaza una solicitud de amistad pendiente. Solo el destinatario puede hacerlo.
+     * PUT /api/v1/usuarios/amistades/solicitudes/{id}/rechazar
+     */
+    @PreAuthorize("isAuthenticated()")
+    @PutMapping("/amistades/solicitudes/{id}/rechazar")
+    public ResponseEntity<SolicitudAmistadDTO> rechazarSolicitud(
+            @PathVariable Long id,
+            Authentication authentication) {
+        AuthUserDetails principal = (AuthUserDetails) authentication.getPrincipal();
+        return ResponseEntity.ok(solicitudAmistadService.rechazar(id, principal.getId()));
+    }
+
+    /**
+     * Cancela una solicitud pendiente enviada por el usuario autenticado (solo el remitente).
+     * DELETE /api/v1/usuarios/amistades/solicitudes/{id}
+     */
+    @PreAuthorize("isAuthenticated()")
+    @DeleteMapping("/amistades/solicitudes/{id}")
+    public ResponseEntity<String> cancelarSolicitud(
+            @PathVariable Long id,
+            Authentication authentication) {
+        AuthUserDetails principal = (AuthUserDetails) authentication.getPrincipal();
+        solicitudAmistadService.cancelar(id, principal.getId());
+        return ResponseEntity.ok("Solicitud cancelada correctamente");
+    }
+
     // Usamos estos DTOs dentro del controlador para no tener que crear clases separadas
     // para peticiones sencillas que solo se usan aquí.
 

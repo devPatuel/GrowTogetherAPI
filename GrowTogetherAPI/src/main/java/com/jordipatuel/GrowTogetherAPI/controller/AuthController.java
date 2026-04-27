@@ -2,7 +2,6 @@ package com.jordipatuel.GrowTogetherAPI.controller;
 import com.jordipatuel.GrowTogetherAPI.config.Config;
 import com.jordipatuel.GrowTogetherAPI.dto.UsuarioCreateDTO;
 import com.jordipatuel.GrowTogetherAPI.dto.UsuarioDTO;
-import com.jordipatuel.GrowTogetherAPI.model.Usuario;
 import com.jordipatuel.GrowTogetherAPI.service.JwtService;
 import com.jordipatuel.GrowTogetherAPI.service.UsuarioService;
 import jakarta.validation.Valid;
@@ -24,6 +23,9 @@ import jakarta.servlet.http.HttpServletRequest;
  * Gestiona los endpoints públicos de registro, login y recuperación de contraseña.
  * No requiere JWT. El login registra en el audit log tanto los intentos exitosos
  * como los fallidos.
+ *
+ * Todos los endpoints consumen y devuelven DTOs: el mapeo a/desde la entidad
+ * {@code Usuario} vive dentro de {@link UsuarioService}.
  */
 @RestController
 @RequestMapping(Config.API_URL + "/auth")
@@ -43,18 +45,13 @@ public class AuthController {
     }
 
     /**
-     * Registra un nuevo usuario. Valida el DTO de entrada y devuelve el usuario creado.
+     * Registra un nuevo usuario. Valida el DTO de entrada y devuelve el DTO del usuario creado.
      * POST /api/v1/auth/registrar
      */
     @PostMapping("/registrar")
     public ResponseEntity<UsuarioDTO> registrarUsuario(@Valid @RequestBody UsuarioCreateDTO dto) {
-        Usuario usuario = new Usuario();
-        usuario.setNombre(dto.getNombre());
-        usuario.setEmail(dto.getEmail());
-        usuario.setPassword(dto.getPassword());
-        usuario.setFoto(dto.getFoto());
-        Usuario nuevoUsuario = usuarioService.registrarUsuario(usuario);
-        return new ResponseEntity<>(mapToDTO(nuevoUsuario), HttpStatus.CREATED);
+        UsuarioDTO nuevoUsuario = usuarioService.registrarUsuario(dto);
+        return new ResponseEntity<>(nuevoUsuario, HttpStatus.CREATED);
     }
     /**
      * Autentica al usuario con email y contraseña y devuelve el JWT junto con
@@ -70,7 +67,7 @@ public class AuthController {
             );
 
             String token = jwtService.generateToken(authentication);
-            Usuario usuarioInfo = usuarioService.obtenerUsuarioPorEmail(loginRequest.getEmail());
+            UsuarioDTO usuarioInfo = usuarioService.obtenerUsuarioPorEmail(loginRequest.getEmail());
 
             auditService.registrar("LOGIN_OK", "Usuario", usuarioInfo.getId(),
                     usuarioInfo.getId(), usuarioInfo.getEmail(),
@@ -100,22 +97,6 @@ public class AuthController {
     @PostMapping("/recuperar")
     public ResponseEntity<String> recuperarContrasena(@RequestBody RecuperarRequest request) {
         return new ResponseEntity<>("Si el correo existe, enviaremos un email de recuperación", HttpStatus.OK);
-    }
-    /**
-     * Convierte una entidad {@link Usuario} al DTO de respuesta.
-     */
-    private UsuarioDTO mapToDTO(Usuario usuario) {
-        return new UsuarioDTO(
-            usuario.getId(),
-            usuario.getNombre(),
-            usuario.getEmail(),
-            usuario.getRol(),
-            usuario.getFechaRegistro(),
-            usuario.getPuntosTotales(),
-            usuario.getFoto(),
-            usuario.getTema(),
-            usuario.getIdioma()
-        );
     }
     /**
      * DTO interno para la petición de login (email + password).

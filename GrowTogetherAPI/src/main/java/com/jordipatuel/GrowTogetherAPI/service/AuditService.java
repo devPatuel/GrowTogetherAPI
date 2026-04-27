@@ -1,11 +1,13 @@
 package com.jordipatuel.GrowTogetherAPI.service;
 
+import com.jordipatuel.GrowTogetherAPI.dto.AuditLogDTO;
 import com.jordipatuel.GrowTogetherAPI.model.AuditLog;
 import com.jordipatuel.GrowTogetherAPI.repository.AuditLogRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Servicio de auditoría de acciones administrativas.
@@ -15,6 +17,10 @@ import java.util.List;
  * Los logs son inmutables: solo se crean, nunca se modifican ni eliminan.
  * Las consultas están limitadas a los últimos 100 registros para evitar
  * sobrecargar la respuesta.
+ *
+ * Las consultas devuelven {@link AuditLogDTO} para que los Controllers no
+ * vean la entidad. El método de registro sigue aceptando primitivos: es
+ * infraestructura interna invocada desde otros services, nunca desde REST.
  */
 @Service
 public class AuditService {
@@ -46,21 +52,37 @@ public class AuditService {
     /**
      * Devuelve los últimos 100 registros de auditoría ordenados por fecha descendente.
      */
-    public List<AuditLog> obtenerUltimos() {
-        return auditLogRepository.findTop100ByOrderByFechaDesc();
+    public List<AuditLogDTO> obtenerUltimos() {
+        return auditLogRepository.findTop100ByOrderByFechaDesc().stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
 
     /**
      * Devuelve los últimos 100 registros de auditoría de un usuario concreto.
      */
-    public List<AuditLog> obtenerPorUsuario(Long usuarioId) {
-        return auditLogRepository.findTop100ByUsuarioIdOrderByFechaDesc(usuarioId);
+    public List<AuditLogDTO> obtenerPorUsuario(Long usuarioId) {
+        return auditLogRepository.findTop100ByUsuarioIdOrderByFechaDesc(usuarioId).stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
 
     /**
      * Devuelve todos los registros de auditoría de un tipo de entidad concreto.
      */
-    public List<AuditLog> obtenerPorEntidad(String entidad) {
-        return auditLogRepository.findByEntidadOrderByFechaDesc(entidad);
+    public List<AuditLogDTO> obtenerPorEntidad(String entidad) {
+        return auditLogRepository.findByEntidadOrderByFechaDesc(entidad).stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Convierte la entidad {@link AuditLog} al DTO de respuesta.
+     */
+    private AuditLogDTO toDTO(AuditLog log) {
+        return new AuditLogDTO(
+                log.getId(), log.getAccion(), log.getEntidad(), log.getEntidadId(),
+                log.getUsuarioId(), log.getUsuarioEmail(), log.getDetalle(),
+                log.getIp(), log.getFecha());
     }
 }

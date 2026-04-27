@@ -2,7 +2,6 @@ package com.jordipatuel.GrowTogetherAPI.controller;
 import com.jordipatuel.GrowTogetherAPI.config.Config;
 import com.jordipatuel.GrowTogetherAPI.dto.NotificacionCreateDTO;
 import com.jordipatuel.GrowTogetherAPI.dto.NotificacionDTO;
-import com.jordipatuel.GrowTogetherAPI.model.Notificacion;
 import com.jordipatuel.GrowTogetherAPI.service.NotificacionService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,13 +10,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import java.util.stream.Collectors;
 /**
  * Controlador de gestión de notificaciones de hábitos.
  *
  * Todos los endpoints requieren JWT. La creación y listado verifican que el usuario
  * es propietario del hábito asociado. La edición y eliminación verifican que es
  * propietario de la notificación concreta navegando por notificacion → habito → usuario.
+ *
+ * Todos los endpoints consumen y devuelven DTOs: el mapeo a/desde la entidad
+ * {@code Notificacion} vive en {@link NotificacionService}.
  */
 @RestController
 @RequestMapping(Config.API_URL + "/notificaciones")
@@ -36,13 +37,8 @@ public class NotificacionController {
     @PreAuthorize("@habitoService.isOwner(#dto.habitoId, authentication.principal.id)")
     @PostMapping
     public ResponseEntity<NotificacionDTO> crearNotificacion(@Valid @RequestBody NotificacionCreateDTO dto) {
-        Notificacion notificacion = new Notificacion();
-        notificacion.setMensaje(dto.getMensaje());
-        notificacion.setHoraProgramada(dto.getHoraProgramada());
-        notificacion.setFrecuencia(dto.getFrecuencia());
-        notificacion.setActiva(dto.isActiva());
-        Notificacion saved = notificacionService.crearNotificacion(notificacion, dto.getHabitoId());
-        return new ResponseEntity<>(mapToDTO(saved), HttpStatus.CREATED);
+        NotificacionDTO saved = notificacionService.crearNotificacion(dto);
+        return new ResponseEntity<>(saved, HttpStatus.CREATED);
     }
     /**
      * Lista las notificaciones de un hábito concreto.
@@ -52,11 +48,7 @@ public class NotificacionController {
     @PreAuthorize("@habitoService.isOwner(#habitoId, authentication.principal.id)")
     @GetMapping("/habito/{habitoId}")
     public ResponseEntity<List<NotificacionDTO>> listarPorHabito(@PathVariable Integer habitoId) {
-        List<NotificacionDTO> notificaciones = notificacionService.obtenerPorHabito(habitoId)
-                .stream()
-                .map(this::mapToDTO)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(notificaciones);
+        return ResponseEntity.ok(notificacionService.obtenerPorHabito(habitoId));
     }
     /**
      * Actualiza una notificación. Verifica que el usuario es propietario de la notificación.
@@ -67,13 +59,7 @@ public class NotificacionController {
     public ResponseEntity<NotificacionDTO> actualizarNotificacion(
             @PathVariable Integer id,
             @Valid @RequestBody NotificacionCreateDTO dto) {
-        Notificacion datos = new Notificacion();
-        datos.setMensaje(dto.getMensaje());
-        datos.setHoraProgramada(dto.getHoraProgramada());
-        datos.setFrecuencia(dto.getFrecuencia());
-        datos.setActiva(dto.isActiva());
-        Notificacion updated = notificacionService.actualizarNotificacion(id, datos);
-        return ResponseEntity.ok(mapToDTO(updated));
+        return ResponseEntity.ok(notificacionService.actualizarNotificacion(id, dto));
     }
     /**
      * Elimina una notificación. Verifica que el usuario es propietario de la notificación.
@@ -84,18 +70,5 @@ public class NotificacionController {
     public ResponseEntity<Void> eliminarNotificacion(@PathVariable Integer id) {
         notificacionService.eliminarNotificacion(id);
         return ResponseEntity.noContent().build();
-    }
-    /**
-     * Convierte una entidad {@link Notificacion} al DTO de respuesta.
-     */
-    private NotificacionDTO mapToDTO(Notificacion n) {
-        return new NotificacionDTO(
-                n.getId(),
-                n.getMensaje(),
-                n.getHoraProgramada(),
-                n.getFrecuencia(),
-                n.isActiva(),
-                n.getHabito().getId()
-        );
     }
 }

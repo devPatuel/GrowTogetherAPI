@@ -4,8 +4,6 @@ import com.jordipatuel.GrowTogetherAPI.config.Config;
 import com.jordipatuel.GrowTogetherAPI.dto.AuditLogDTO;
 import com.jordipatuel.GrowTogetherAPI.dto.ConsejoCreateDTO;
 import com.jordipatuel.GrowTogetherAPI.dto.ConsejoDTO;
-import com.jordipatuel.GrowTogetherAPI.model.AuditLog;
-import com.jordipatuel.GrowTogetherAPI.model.Consejo;
 import com.jordipatuel.GrowTogetherAPI.service.AuditService;
 import com.jordipatuel.GrowTogetherAPI.service.ConsejoService;
 import com.jordipatuel.GrowTogetherAPI.service.DesafioService;
@@ -22,13 +20,15 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 /**
  * Controlador de operaciones administrativas.
  *
  * Todos los endpoints requieren rol ADMIN. Cualquier acción sensible
  * (reset de contraseña, eliminar usuario, gestión de consejos) queda registrada
  * en el audit log con la IP del admin que la ejecutó.
+ *
+ * Todos los endpoints consumen y devuelven DTOs: el mapeo a/desde las entidades
+ * vive en los services correspondientes.
  */
 @RestController
 @RequestMapping(Config.API_URL + "/admin")
@@ -102,19 +102,11 @@ public class AdminController {
             Authentication authentication,
             HttpServletRequest request) {
         AuthUserDetails principal = (AuthUserDetails) authentication.getPrincipal();
-        Consejo consejo = new Consejo();
-        consejo.setTitulo(dto.getTitulo());
-        consejo.setDescripcion(dto.getDescripcion());
-        consejo.setFechaPublicacion(dto.getFechaPublicacion());
-        if (dto.getActivo() != null) {
-            consejo.setActivo(dto.getActivo());
-        }
-        consejo.setCreadorId(principal.getId());
-        Consejo guardado = consejoService.crearConsejo(consejo);
+        ConsejoDTO guardado = consejoService.crearConsejo(dto, principal.getId());
         auditService.registrar("CREAR", "Consejo", Long.valueOf(guardado.getId()),
                 principal.getId(), principal.getUsername(),
                 "Recurso creado: " + guardado.getTitulo(), request.getRemoteAddr());
-        return new ResponseEntity<>(mapToDTO(guardado), HttpStatus.CREATED);
+        return new ResponseEntity<>(guardado, HttpStatus.CREATED);
     }
     /**
      * Devuelve todos los consejos sin filtrar (incluye inactivos y futuros).
@@ -123,9 +115,7 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/recursos")
     public ResponseEntity<List<ConsejoDTO>> listarTodosLosRecursos() {
-        List<ConsejoDTO> recursos = consejoService.obtenerTodos().stream()
-                .map(this::mapToDTO).collect(Collectors.toList());
-        return ResponseEntity.ok(recursos);
+        return ResponseEntity.ok(consejoService.obtenerTodos());
     }
     /**
      * Edita un consejo existente. Registra la acción en el audit log.
@@ -139,18 +129,11 @@ public class AdminController {
             Authentication authentication,
             HttpServletRequest request) {
         AuthUserDetails principal = (AuthUserDetails) authentication.getPrincipal();
-        Consejo consejo = new Consejo();
-        consejo.setTitulo(dto.getTitulo());
-        consejo.setDescripcion(dto.getDescripcion());
-        consejo.setFechaPublicacion(dto.getFechaPublicacion());
-        if (dto.getActivo() != null) {
-            consejo.setActivo(dto.getActivo());
-        }
-        Consejo actualizado = consejoService.actualizarConsejo(id, consejo);
+        ConsejoDTO actualizado = consejoService.actualizarConsejo(id, dto);
         auditService.registrar("EDITAR", "Consejo", Long.valueOf(id),
                 principal.getId(), principal.getUsername(),
                 "Recurso editado: " + actualizado.getTitulo(), request.getRemoteAddr());
-        return ResponseEntity.ok(mapToDTO(actualizado));
+        return ResponseEntity.ok(actualizado);
     }
     /**
      * Elimina un consejo. Registra la acción en el audit log antes de eliminar.
@@ -194,9 +177,7 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/audit")
     public ResponseEntity<List<AuditLogDTO>> verAuditLog() {
-        List<AuditLogDTO> logs = auditService.obtenerUltimos().stream()
-                .map(this::mapToAuditDTO).collect(Collectors.toList());
-        return ResponseEntity.ok(logs);
+        return ResponseEntity.ok(auditService.obtenerUltimos());
     }
     /**
      * Devuelve los últimos 100 registros del audit log de un usuario concreto.
@@ -205,30 +186,6 @@ public class AdminController {
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/audit/usuario/{usuarioId}")
     public ResponseEntity<List<AuditLogDTO>> verAuditPorUsuario(@PathVariable Long usuarioId) {
-        List<AuditLogDTO> logs = auditService.obtenerPorUsuario(usuarioId).stream()
-                .map(this::mapToAuditDTO).collect(Collectors.toList());
-        return ResponseEntity.ok(logs);
-    }
-    /**
-     * Convierte una entidad {@link AuditLog} al DTO de respuesta.
-     */
-    private AuditLogDTO mapToAuditDTO(AuditLog log) {
-        return new AuditLogDTO(
-                log.getId(), log.getAccion(), log.getEntidad(), log.getEntidadId(),
-                log.getUsuarioId(), log.getUsuarioEmail(), log.getDetalle(),
-                log.getIp(), log.getFecha());
-    }
-    /**
-     * Convierte una entidad {@link Consejo} al DTO de respuesta.
-     */
-    private ConsejoDTO mapToDTO(Consejo consejo) {
-        return new ConsejoDTO(
-                consejo.getId(),
-                consejo.getTitulo(),
-                consejo.getDescripcion(),
-                consejo.getFechaPublicacion(),
-                consejo.isActivo(),
-                consejo.getCreadorId()
-        );
+        return ResponseEntity.ok(auditService.obtenerPorUsuario(usuarioId));
     }
 }

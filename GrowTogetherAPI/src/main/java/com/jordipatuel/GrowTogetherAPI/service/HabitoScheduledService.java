@@ -44,7 +44,7 @@ public class HabitoScheduledService {
         int total = 0;
         for (Habito habito : habitos) {
             try {
-                registroHabitoService.rellenarNoCompletados(habito);
+                registroHabitoService.rellenarNoCompletados(habito.getId());
                 total++;
             } catch (Exception e) {
                 log.error("Error al rellenar hábito {}: {}", habito.getId(), e.getMessage());

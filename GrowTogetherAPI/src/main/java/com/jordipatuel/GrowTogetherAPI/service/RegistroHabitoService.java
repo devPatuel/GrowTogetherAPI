@@ -1,8 +1,11 @@
 package com.jordipatuel.GrowTogetherAPI.service;
+import com.jordipatuel.GrowTogetherAPI.dto.RegistroHabitoDTO;
+import com.jordipatuel.GrowTogetherAPI.dto.RegistroHabitoHistorialDTO;
 import com.jordipatuel.GrowTogetherAPI.model.Habito;
 import com.jordipatuel.GrowTogetherAPI.model.RegistroHabito;
 import com.jordipatuel.GrowTogetherAPI.model.enums.EstadoHabito;
 import com.jordipatuel.GrowTogetherAPI.model.enums.Frecuencia;
+import com.jordipatuel.GrowTogetherAPI.repository.HabitoRepository;
 import com.jordipatuel.GrowTogetherAPI.repository.RegistroHabitoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,51 +22,68 @@ import java.util.stream.Collectors;
  * Un {@link RegistroHabito} representa el estado de un hábito en un día concreto
  * (COMPLETADO, PENDIENTE o NO_COMPLETADO). Este servicio centraliza las consultas
  * sobre ese historial y la lógica de relleno de días sin registro.
+ *
+ * Las consultas expuestas a los controllers devuelven DTOs. {@code rellenarNoCompletados}
+ * es una operación interna invocada desde otros services; acepta un ID de hábito
+ * y resuelve la entidad internamente a través del repositorio.
  */
 @Service
 public class RegistroHabitoService {
     private final RegistroHabitoRepository registroHabitoRepository;
+    private final HabitoRepository habitoRepository;
     @Autowired
-    public RegistroHabitoService(RegistroHabitoRepository registroHabitoRepository) {
+    public RegistroHabitoService(RegistroHabitoRepository registroHabitoRepository,
+                                  HabitoRepository habitoRepository) {
         this.registroHabitoRepository = registroHabitoRepository;
+        this.habitoRepository = habitoRepository;
     }
 
     /**
      * Devuelve todos los registros de la base de datos sin filtrar.
      */
-    public List<RegistroHabito> obtenerTodos() {
-        return registroHabitoRepository.findAll();
+    public List<RegistroHabitoDTO> obtenerTodos() {
+        return registroHabitoRepository.findAll().stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
     /**
      * Devuelve todos los registros de un usuario.
      */
-    public List<RegistroHabito> obtenerPorUsuario(Long usuarioId) {
-        return registroHabitoRepository.findByUsuario_Id(usuarioId);
+    public List<RegistroHabitoDTO> obtenerPorUsuario(Long usuarioId) {
+        return registroHabitoRepository.findByUsuario_Id(usuarioId).stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
     /**
      * Devuelve los registros de un hábito concreto para un usuario.
      */
-    public List<RegistroHabito> obtenerPorHabitoYUsuario(Integer habitoId, Long usuarioId) {
-        return registroHabitoRepository.findByHabito_IdAndUsuario_Id(habitoId, usuarioId);
+    public List<RegistroHabitoDTO> obtenerPorHabitoYUsuario(Integer habitoId, Long usuarioId) {
+        return registroHabitoRepository.findByHabito_IdAndUsuario_Id(habitoId, usuarioId).stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
     /**
      * Devuelve el registro de un hábito en una fecha exacta, si existe.
      */
-    public Optional<RegistroHabito> obtenerPorFecha(Integer habitoId, Long usuarioId, LocalDate fecha) {
-        return registroHabitoRepository.findByHabito_IdAndUsuario_IdAndFecha(habitoId, usuarioId, fecha);
+    public Optional<RegistroHabitoDTO> obtenerPorFecha(Integer habitoId, Long usuarioId, LocalDate fecha) {
+        return registroHabitoRepository.findByHabito_IdAndUsuario_IdAndFecha(habitoId, usuarioId, fecha)
+                .map(this::toDTO);
     }
     /**
      * Devuelve todos los registros de un usuario en un rango de fechas.
      */
-    public List<RegistroHabito> obtenerPorRangoFechas(Long usuarioId, LocalDate start, LocalDate end) {
-        return registroHabitoRepository.findByUsuario_IdAndFechaBetween(usuarioId, start, end);
+    public List<RegistroHabitoDTO> obtenerPorRangoFechas(Long usuarioId, LocalDate start, LocalDate end) {
+        return registroHabitoRepository.findByUsuario_IdAndFechaBetween(usuarioId, start, end).stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
     /**
      * Devuelve el historial de un hábito en un rango de fechas ordenado descendente.
      * Si no se indica fechaFin, usa hoy. Si no se indica fechaInicio, usa los últimos 30 días.
+     * Devuelve el DTO simplificado (solo fecha y estado) usado por el heatmap.
      */
-    public List<RegistroHabito> obtenerHistorialHabito(Integer habitoId, Long usuarioId,
-                                                        LocalDate fechaInicio, LocalDate fechaFin) {
+    public List<RegistroHabitoHistorialDTO> obtenerHistorialHabito(Integer habitoId, Long usuarioId,
+                                                                    LocalDate fechaInicio, LocalDate fechaFin) {
         if (fechaFin == null) {
             fechaFin = LocalDate.now();
         }
@@ -71,7 +91,10 @@ public class RegistroHabitoService {
             fechaInicio = fechaFin.minusDays(30);
         }
         return registroHabitoRepository
-                .findByHabito_IdAndUsuario_IdAndFechaBetweenOrderByFechaDesc(habitoId, usuarioId, fechaInicio, fechaFin);
+                .findByHabito_IdAndUsuario_IdAndFechaBetweenOrderByFechaDesc(habitoId, usuarioId, fechaInicio, fechaFin)
+                .stream()
+                .map(this::toHistorialDTO)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -89,7 +112,10 @@ public class RegistroHabitoService {
      * Llamado por {@link HabitoScheduledService} cada noche y de forma lazy al consultar historial.
      */
     @Transactional
-    public void rellenarNoCompletados(Habito habito) {
+    public void rellenarNoCompletados(Integer habitoId) {
+        Habito habito = habitoRepository.findById(habitoId).orElse(null);
+        if (habito == null) return;
+
         LocalDate desde = habito.getFechaInicio();
         if (desde == null) return;
         LocalDate ayer = LocalDate.now().minusDays(1);
@@ -128,5 +154,26 @@ public class RegistroHabitoService {
                 registroHabitoRepository.save(registro);
             }
         }
+    }
+
+    /**
+     * Convierte la entidad {@link RegistroHabito} al DTO completo.
+     */
+    private RegistroHabitoDTO toDTO(RegistroHabito r) {
+        return new RegistroHabitoDTO(
+                r.getId(),
+                r.getFecha(),
+                r.getEstado(),
+                r.getUsuario() != null ? r.getUsuario().getId() : null,
+                r.getHabito() != null ? r.getHabito().getId() : null
+        );
+    }
+
+    /**
+     * Convierte la entidad {@link RegistroHabito} al DTO simplificado de historial
+     * (solo fecha y estado, usado por el heatmap).
+     */
+    private RegistroHabitoHistorialDTO toHistorialDTO(RegistroHabito r) {
+        return new RegistroHabitoHistorialDTO(r.getFecha(), r.getEstado());
     }
 }

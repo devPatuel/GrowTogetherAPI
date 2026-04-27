@@ -1,4 +1,7 @@
 package com.jordipatuel.GrowTogetherAPI.service;
+import com.jordipatuel.GrowTogetherAPI.dto.UsuarioCreateDTO;
+import com.jordipatuel.GrowTogetherAPI.dto.UsuarioDTO;
+import com.jordipatuel.GrowTogetherAPI.dto.UsuarioPublicoDTO;
 import com.jordipatuel.GrowTogetherAPI.model.Usuario;
 import com.jordipatuel.GrowTogetherAPI.model.enums.Roles;
 import com.jordipatuel.GrowTogetherAPI.repository.UsuarioRepository;
@@ -9,6 +12,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -25,6 +29,10 @@ import com.jordipatuel.GrowTogetherAPI.config.AuthUserDetails;
  *
  * También centraliza el registro, edición de perfil, contraseñas,
  * preferencias, sistema de amigos, puntos y baja de usuarios.
+ *
+ * Expone una API basada en DTOs: los Controllers nunca ven la entidad {@link Usuario}.
+ * {@code loadUserByUsername} se deja intacto porque es el contrato de Spring Security
+ * y necesita devolver un {@link UserDetails}.
  */
 @Service
 public class UsuarioService implements UserDetailsService {
@@ -37,43 +45,60 @@ public class UsuarioService implements UserDetailsService {
     }
 
     /**
-     * Registra un nuevo usuario cifrando su contraseña,
-     * asignando la fecha de registro y el rol STANDARD si no se especifica otro.
+     * Registra un nuevo usuario a partir del DTO recibido: cifra su contraseña,
+     * asigna la fecha de registro y el rol STANDARD por defecto.
      */
-    public Usuario registrarUsuario(Usuario usuario) {
-        String contrasenaEncriptada = passwordEncoder.encode(usuario.getPassword());
-        usuario.setPassword(contrasenaEncriptada);
+    public UsuarioDTO registrarUsuario(UsuarioCreateDTO dto) {
+        Usuario usuario = new Usuario();
+        usuario.setNombre(dto.getNombre());
+        usuario.setEmail(dto.getEmail());
+        usuario.setPassword(passwordEncoder.encode(dto.getPassword()));
+        usuario.setFoto(dto.getFoto());
         usuario.setFechaRegistro(new Date());
-        if(usuario.getRol() == null) {
-            usuario.setRol(Roles.STANDARD);
-        }
-        return usuarioRepository.save(usuario);
+        usuario.setRol(Roles.STANDARD);
+        return toDTO(usuarioRepository.save(usuario));
     }
     /**
      * Devuelve todos los usuarios de la base de datos sin filtrar.
      */
-    public List<Usuario> obtenerTodos() {
-        return usuarioRepository.findAll();
+    public List<UsuarioDTO> obtenerTodos() {
+        return usuarioRepository.findAll().stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
     /**
      * Busca un usuario por su ID. Lanza {@link com.jordipatuel.GrowTogetherAPI.exception.ResourceNotFoundException} si no existe.
      */
-    public Usuario obtenerPorId(Long id) {
-        return usuarioRepository.findById(id)
-                .orElseThrow(() -> new com.jordipatuel.GrowTogetherAPI.exception.ResourceNotFoundException("Usuario no encontrado con ID: " + id));
+    public UsuarioDTO obtenerPorId(Long id) {
+        return toDTO(obtenerEntidadPorId(id));
     }
     /**
      * Busca usuarios cuyo nombre o email contengan el texto indicado (insensible a mayúsculas).
      */
-    public List<Usuario> buscarPorNombreOEmail(String query) {
-        return usuarioRepository.findByNombreContainingIgnoreCaseOrEmailContainingIgnoreCase(query, query);
+    public List<UsuarioDTO> buscarPorNombreOEmail(String query) {
+        return usuarioRepository.findByNombreContainingIgnoreCaseOrEmailContainingIgnoreCase(query, query).stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+    /**
+     * Devuelve los datos públicos (sin email ni rol) de cualquier usuario por su ID.
+     * Usado desde el buscador de amigos por ID. Lanza {@link com.jordipatuel.GrowTogetherAPI.exception.ResourceNotFoundException} si no existe.
+     */
+    public UsuarioPublicoDTO obtenerPublicoPorId(Long id) {
+        Usuario usuario = obtenerEntidadPorId(id);
+        return new UsuarioPublicoDTO(
+                usuario.getId(),
+                usuario.getNombre(),
+                usuario.getFoto(),
+                usuario.getPuntosTotales()
+        );
     }
     /**
      * Busca un usuario por su email exacto. Lanza {@link com.jordipatuel.GrowTogetherAPI.exception.ResourceNotFoundException} si no existe.
      */
-    public Usuario obtenerUsuarioPorEmail(String email) {
-        return usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new com.jordipatuel.GrowTogetherAPI.exception.ResourceNotFoundException("Usuario no encontrado con email: " + email));
+    public UsuarioDTO obtenerUsuarioPorEmail(String email) {
+        return toDTO(usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new com.jordipatuel.GrowTogetherAPI.exception.ResourceNotFoundException("Usuario no encontrado con email: " + email)));
     }
 
     /**
@@ -100,23 +125,21 @@ public class UsuarioService implements UserDetailsService {
      * Cambia la contraseña del usuario verificando primero la actual.
      * Incrementa tokenVersion para invalidar todos los JWT activos del usuario.
      */
-    public Usuario cambiarContrasena(Long idUsuario, String currentPassword, String newPassword) {
-        Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new com.jordipatuel.GrowTogetherAPI.exception.ResourceNotFoundException("Usuario no encontrado"));
+    public UsuarioDTO cambiarContrasena(Long idUsuario, String currentPassword, String newPassword) {
+        Usuario usuario = obtenerEntidadPorId(idUsuario);
         if (!passwordEncoder.matches(currentPassword, usuario.getPassword())) {
             throw new com.jordipatuel.GrowTogetherAPI.exception.BadRequestException("La contraseña actual es incorrecta");
         }
         usuario.setPassword(passwordEncoder.encode(newPassword));
         usuario.setTokenVersion(usuario.getTokenVersion() + 1);
-        return usuarioRepository.save(usuario);
+        return toDTO(usuarioRepository.save(usuario));
     }
     /**
      * Actualiza nombre, email y/o foto del perfil.
      * Valida que el nuevo email no esté ya en uso por otro usuario.
      */
-    public Usuario editarPerfil(Long idUsuario, String nombre, String email, String foto) {
-        Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new com.jordipatuel.GrowTogetherAPI.exception.ResourceNotFoundException("Usuario no encontrado"));
+    public UsuarioDTO editarPerfil(Long idUsuario, String nombre, String email, String foto) {
+        Usuario usuario = obtenerEntidadPorId(idUsuario);
         if(nombre != null && !nombre.trim().isEmpty()) usuario.setNombre(nombre);
         if(email != null && !email.trim().isEmpty()) {
             Optional<Usuario> usuarioExistente = usuarioRepository.findByEmail(email);
@@ -126,7 +149,7 @@ public class UsuarioService implements UserDetailsService {
             usuario.setEmail(email);
         }
         if(foto != null) usuario.setFoto(foto);
-        return usuarioRepository.save(usuario);
+        return toDTO(usuarioRepository.save(usuario));
     }
     private static final List<String> TEMAS_VALIDOS = Arrays.asList("CLARO", "OSCURO", "MORADO", "NATURALEZA");
     private static final List<String> IDIOMAS_VALIDOS = Arrays.asList("es", "en", "ca");
@@ -135,9 +158,8 @@ public class UsuarioService implements UserDetailsService {
      * Actualiza las preferencias de tema (CLARO/OSCURO/MORADO/NATURALEZA)
      * e idioma (es/en/ca). Lanza {@link com.jordipatuel.GrowTogetherAPI.exception.BadRequestException} si el valor no es válido.
      */
-    public Usuario actualizarPreferencias(Long idUsuario, String tema, String idioma) {
-        Usuario usuario = usuarioRepository.findById(idUsuario)
-                .orElseThrow(() -> new com.jordipatuel.GrowTogetherAPI.exception.ResourceNotFoundException("Usuario no encontrado"));
+    public UsuarioDTO actualizarPreferencias(Long idUsuario, String tema, String idioma) {
+        Usuario usuario = obtenerEntidadPorId(idUsuario);
 
         if (tema != null) {
             String temaUpper = tema.toUpperCase();
@@ -157,7 +179,7 @@ public class UsuarioService implements UserDetailsService {
             usuario.setIdioma(idiomaLower);
         }
 
-        return usuarioRepository.save(usuario);
+        return toDTO(usuarioRepository.save(usuario));
     }
 
     /**
@@ -165,8 +187,8 @@ public class UsuarioService implements UserDetailsService {
      * Solo guarda si la relación no existía ya en alguna de las dos direcciones.
      */
     public void agregarAmigo(Long idUsuario, Long idAmigo) {
-        Usuario usuario = obtenerPorId(idUsuario);
-        Usuario amigo = obtenerPorId(idAmigo);
+        Usuario usuario = obtenerEntidadPorId(idUsuario);
+        Usuario amigo = obtenerEntidadPorId(idAmigo);
         boolean changed = false;
         if (!usuario.getAmigos().contains(amigo)) {
             usuario.getAmigos().add(amigo);
@@ -185,8 +207,8 @@ public class UsuarioService implements UserDetailsService {
      * Elimina la relación de amistad en ambas direcciones.
      */
     public void eliminarAmigo(Long idUsuario, Long idAmigo) {
-        Usuario usuario = obtenerPorId(idUsuario);
-        Usuario amigo = obtenerPorId(idAmigo);
+        Usuario usuario = obtenerEntidadPorId(idUsuario);
+        Usuario amigo = obtenerEntidadPorId(idAmigo);
         usuario.getAmigos().remove(amigo);
         amigo.getAmigos().remove(usuario);
         usuarioRepository.save(usuario);
@@ -197,7 +219,7 @@ public class UsuarioService implements UserDetailsService {
      * Incrementa tokenVersion para invalidar sesiones activas.
      */
     public void resetearContrasena(Long userId, String newPassword) {
-        Usuario usuario = obtenerPorId(userId);
+        Usuario usuario = obtenerEntidadPorId(userId);
         usuario.setPassword(passwordEncoder.encode(newPassword));
         usuario.setTokenVersion(usuario.getTokenVersion() + 1);
         usuarioRepository.save(usuario);
@@ -205,9 +227,11 @@ public class UsuarioService implements UserDetailsService {
     /**
      * Devuelve la lista de amigos del usuario indicado.
      */
-    public List<Usuario> obtenerAmigos(Long idUsuario) {
-        Usuario usuario = obtenerPorId(idUsuario);
-        return usuario.getAmigos();
+    public List<UsuarioDTO> obtenerAmigos(Long idUsuario) {
+        Usuario usuario = obtenerEntidadPorId(idUsuario);
+        return usuario.getAmigos().stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
     /**
      * Suma puntos al total del usuario. Llamado desde {@link HabitoService}
@@ -215,7 +239,7 @@ public class UsuarioService implements UserDetailsService {
      */
     public void sumarPuntos(Long usuarioId, int puntos) {
         Usuario usuario = usuarioRepository.findById(usuarioId).orElseThrow();
-        usuario.setPuntosTotales(usuario.getPuntosTotales() + puntos); 
+        usuario.setPuntosTotales(usuario.getPuntosTotales() + puntos);
         usuarioRepository.save(usuario);
     }
     /**
@@ -223,9 +247,37 @@ public class UsuarioService implements UserDetailsService {
      * para cerrar todas sus sesiones activas.
      */
     public void eliminarUsuario(Long id) {
-        Usuario usuario = obtenerPorId(id);
+        Usuario usuario = obtenerEntidadPorId(id);
         usuario.setActivo(false);
         usuario.setTokenVersion(usuario.getTokenVersion() + 1);
         usuarioRepository.save(usuario);
+    }
+
+    /**
+     * Helper interno: recupera la entidad {@link Usuario} para operaciones internas
+     * del servicio que necesitan modificar la referencia JPA (edición de perfil,
+     * cambio de contraseña, gestión de amigos, etc).
+     */
+    private Usuario obtenerEntidadPorId(Long id) {
+        return usuarioRepository.findById(id)
+                .orElseThrow(() -> new com.jordipatuel.GrowTogetherAPI.exception.ResourceNotFoundException("Usuario no encontrado con ID: " + id));
+    }
+
+    /**
+     * Convierte la entidad {@link Usuario} al DTO de respuesta.
+     * No incluye password, tokenVersion ni activo (detalles internos).
+     */
+    private UsuarioDTO toDTO(Usuario usuario) {
+        return new UsuarioDTO(
+                usuario.getId(),
+                usuario.getNombre(),
+                usuario.getEmail(),
+                usuario.getRol(),
+                usuario.getFechaRegistro(),
+                usuario.getPuntosTotales(),
+                usuario.getFoto(),
+                usuario.getTema(),
+                usuario.getIdioma()
+        );
     }
 }

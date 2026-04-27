@@ -1,4 +1,5 @@
 package com.jordipatuel.GrowTogetherAPI.service;
+import com.jordipatuel.GrowTogetherAPI.dto.ParticipacionDesafioDTO;
 import com.jordipatuel.GrowTogetherAPI.model.Desafio;
 import com.jordipatuel.GrowTogetherAPI.model.ParticipacionDesafio;
 import com.jordipatuel.GrowTogetherAPI.model.Usuario;
@@ -10,11 +11,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 /**
  * Servicio de gestión de participaciones en desafíos.
  *
  * Una participación vincula a un usuario con un desafío y registra su estado
  * (ACTIVO/SUPERADO/ABANDONADO) y los puntos ganados dentro de ese desafío.
+ *
+ * Devuelve {@link ParticipacionDesafioDTO} en todas sus consultas para que los
+ * Controllers no vean la entidad JPA.
  */
 @Service
 public class ParticipacionDesafioService {
@@ -35,7 +40,7 @@ public class ParticipacionDesafioService {
      * Inscribe al usuario en el desafío validando que no esté ya apuntado
      * y que el desafío no haya finalizado. Inicializa el estado a ACTIVO y puntos a 0.
      */
-    public ParticipacionDesafio unirseADesafio(Integer desafioId, Long usuarioId) {
+    public ParticipacionDesafioDTO unirseADesafio(Integer desafioId, Long usuarioId) {
         if (participacionDesafioRepository.findByDesafioIdAndUsuarioId(desafioId, usuarioId).isPresent()) {
             throw new com.jordipatuel.GrowTogetherAPI.exception.BadRequestException("El usuario ya está participando en este desafío");
         }
@@ -52,31 +57,55 @@ public class ParticipacionDesafioService {
         participacion.setFechaInscripcion(new Date());
         participacion.setEstadoProgreso(EstadoProgreso.ACTIVO);
         participacion.setPuntosGanadosEnDesafio(0);
-        return participacionDesafioRepository.save(participacion);
+        return toDTO(participacionDesafioRepository.save(participacion));
     }
     /**
      * Devuelve los participantes de un desafío ordenados por puntos de mayor a menor.
      * Usado para construir el ranking/leaderboard.
      */
-    public List<ParticipacionDesafio> obtenerRanking(Integer desafioId) {
-        return participacionDesafioRepository.findByDesafioIdOrderByPuntosGanadosEnDesafioDesc(desafioId);
+    public List<ParticipacionDesafioDTO> obtenerRanking(Integer desafioId) {
+        return participacionDesafioRepository.findByDesafioIdOrderByPuntosGanadosEnDesafioDesc(desafioId).stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
     /**
      * Devuelve todos los desafíos en los que participa un usuario.
      */
-    public List<ParticipacionDesafio> obtenerPorUsuario(Long usuarioId) {
-        return participacionDesafioRepository.findByUsuarioId(usuarioId);
+    public List<ParticipacionDesafioDTO> obtenerPorUsuario(Long usuarioId) {
+        return participacionDesafioRepository.findByUsuarioId(usuarioId).stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
     /**
      * Devuelve todas las participaciones de un desafío concreto.
      */
-    public List<ParticipacionDesafio> obtenerPorDesafio(Integer desafioId) {
-        return participacionDesafioRepository.findByDesafioId(desafioId);
+    public List<ParticipacionDesafioDTO> obtenerPorDesafio(Integer desafioId) {
+        return participacionDesafioRepository.findByDesafioId(desafioId).stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
     }
     /**
      * Devuelve todas las participaciones sin filtrar.
      */
-    public List<ParticipacionDesafio> obtenerTodos() {
-        return participacionDesafioRepository.findAll();
+    public List<ParticipacionDesafioDTO> obtenerTodos() {
+        return participacionDesafioRepository.findAll().stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Convierte la entidad {@link ParticipacionDesafio} al DTO de respuesta.
+     * Incluye el nombre del usuario para evitar llamadas adicionales al endpoint de perfil.
+     */
+    private ParticipacionDesafioDTO toDTO(ParticipacionDesafio p) {
+        ParticipacionDesafioDTO dto = new ParticipacionDesafioDTO();
+        dto.setId(p.getId());
+        dto.setFechaInscripcion(p.getFechaInscripcion());
+        dto.setEstadoProgreso(p.getEstadoProgreso());
+        dto.setPuntosGanadosEnDesafio(p.getPuntosGanadosEnDesafio());
+        dto.setUsuarioId(p.getUsuario().getId());
+        dto.setUsuarioNombre(p.getUsuario().getNombre());
+        dto.setDesafioId(p.getDesafio().getId());
+        return dto;
     }
 }
