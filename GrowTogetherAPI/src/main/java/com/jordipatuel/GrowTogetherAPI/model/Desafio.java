@@ -1,8 +1,13 @@
 package com.jordipatuel.GrowTogetherAPI.model;
 import jakarta.persistence.*;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import jakarta.validation.constraints.*;
+import com.jordipatuel.GrowTogetherAPI.model.enums.DiaSemana;
+import com.jordipatuel.GrowTogetherAPI.model.enums.Frecuencia;
+import com.jordipatuel.GrowTogetherAPI.model.enums.TipoHabito;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -13,6 +18,9 @@ import lombok.ToString;
  * Usa soft delete: en vez de borrarse físicamente se pone activo = false.
  * La validación de que fechaFin sea posterior a fechaInicio y a la fecha actual
  * se realiza en el servicio, no en la entidad.
+ *
+ * Comparte campos con {@link Habito} (icono, tipo, frecuencia, diasSemana) porque
+ * los desafíos se ejecutan como un hábito compartido entre varios participantes.
  */
 @Entity
 @Table(name = "desafios")
@@ -34,11 +42,15 @@ public class Desafio {
     @Column(nullable = false, length = 100)
     private String nombre;
 
-    /** Descripción del objetivo a conseguir. */
-    @NotBlank(message = "El objetivo no puede estar vacío")
+    /** Objetivo medible del desafío. Se mantiene por compatibilidad con datos seed. */
     @Size(max = 500, message = "El objetivo no puede superar los 500 caracteres")
-    @Column(nullable = false, length = 500)
+    @Column(length = 500)
     private String objetivo;
+
+    /** Descripción del desafío que se muestra al usuario en cabecera y card. */
+    @Size(max = 500, message = "La descripción no puede superar los 500 caracteres")
+    @Column(length = 500)
+    private String descripcion;
 
     /** Fecha de inicio del desafío. */
     @NotNull(message = "La fecha de inicio no puede ser nula")
@@ -53,6 +65,28 @@ public class Desafio {
     /** Indica si el desafío está activo. En false no aparece en los listados. */
     @Column(nullable = false)
     private boolean activo = true;
+
+    /** Frecuencia del desafío: DIARIO o PERSONALIZADO. Por defecto DIARIO. */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private Frecuencia frecuencia = Frecuencia.DIARIO;
+
+    /** Tipo del desafío: POSITIVO o NEGATIVO. Por defecto POSITIVO. */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private TipoHabito tipo = TipoHabito.POSITIVO;
+
+    /** Identificador del icono seleccionado por el usuario. Mismo set que en hábitos. */
+    @Size(max = 50, message = "El icono no puede superar los 50 caracteres")
+    @Column(length = 50)
+    private String icono;
+
+    /** Días de la semana asignados al desafío. Solo aplica cuando frecuencia es PERSONALIZADO. */
+    @ElementCollection(targetClass = DiaSemana.class)
+    @Enumerated(EnumType.STRING)
+    @CollectionTable(name = "desafio_dias", joinColumns = @JoinColumn(name = "desafio_id"))
+    @Column(name = "dia")
+    private Set<DiaSemana> diasSemana = new HashSet<>();
 
     /** Usuario que creó el desafío. Solo el creador puede eliminarlo. */
     @ManyToOne(fetch = FetchType.LAZY)

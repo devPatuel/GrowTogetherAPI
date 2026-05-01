@@ -11,8 +11,8 @@ import lombok.ToString;
 /**
  * Entidad que representa la participación de un usuario en un desafío.
  * Actúa como tabla intermedia entre Usuario y Desafio con campos adicionales.
- * Los puntos acumulados aquí son independientes de los puntosTotales del usuario,
- * y su integración está pendiente de revisión.
+ * Los puntos acumulados aquí son independientes de los puntosTotales del usuario:
+ * cada desafío tiene su propio ranking interno.
  */
 @Entity
 @Table(name = "participacion_desafios")
@@ -42,6 +42,16 @@ public class ParticipacionDesafio {
     @Min(value = 0, message = "Los puntos ganados no pueden ser negativos")
     @Column(nullable = false)
     private int puntosGanadosEnDesafio;
+
+    /** Días consecutivos completados en el desafío. Se reinicia a 0 si se rompe la racha. */
+    @Min(value = 0, message = "La racha no puede ser negativa")
+    @Column(nullable = false)
+    private int rachaActual;
+
+    /** Mejor racha histórica del participante en este desafío. */
+    @Min(value = 0, message = "La mejor racha no puede ser negativa")
+    @Column(nullable = false)
+    private int rachaMaxima;
 
     /** Usuario participante. */
     @NotNull(message = "El usuario asociado no puede ser nulo")
