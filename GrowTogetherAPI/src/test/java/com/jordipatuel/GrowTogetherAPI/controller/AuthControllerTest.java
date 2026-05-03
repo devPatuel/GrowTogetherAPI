@@ -56,7 +56,7 @@ class AuthControllerTest {
 
     @Test
     void registrar_conDtoValido_devuelve201YElUsuarioCreado() throws Exception {
-        UsuarioCreateDTO dto = new UsuarioCreateDTO("Jordi", "jordi@example.com", "Prueba12", null);
+        UsuarioCreateDTO dto = new UsuarioCreateDTO("Jordi", "jordi@example.com", "Prueba12!", null);
         UsuarioDTO creado = new UsuarioDTO(7L, "Jordi", "jordi@example.com",
                 Roles.STANDARD, new Date(), 0, null, "CLARO", "es");
         when(usuarioService.registrarUsuario(any())).thenReturn(creado);
@@ -71,7 +71,7 @@ class AuthControllerTest {
 
     @Test
     void registrar_conEmailInvalido_devuelve400() throws Exception {
-        UsuarioCreateDTO dto = new UsuarioCreateDTO("Jordi", "no-es-email", "Prueba12", null);
+        UsuarioCreateDTO dto = new UsuarioCreateDTO("Jordi", "no-es-email", "Prueba12!", null);
 
         mockMvc.perform(post("/api/v1/auth/registrar")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -101,7 +101,7 @@ class AuthControllerTest {
                 new UsuarioDTO(7L, "Jordi", "jordi@example.com", Roles.STANDARD,
                         new Date(), 0, null, "CLARO", "es"));
 
-        String body = "{\"email\":\"jordi@example.com\",\"password\":\"Prueba12\"}";
+        String body = "{\"email\":\"jordi@example.com\",\"password\":\"Prueba12!\"}";
         mockMvc.perform(post("/api/v1/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))

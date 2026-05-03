@@ -64,7 +64,7 @@ class AuthFlowIntegrationTest {
     void registrar_inserta_usuario_en_BD_y_devuelve_201() throws Exception {
         mockMvc.perform(post("/api/v1/auth/registrar")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(registrar("Jordi", "jordi@example.com", "Prueba12")))
+                .content(registrar("Jordi", "jordi@example.com", "Prueba12!")))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.email").value("jordi@example.com"));
 
@@ -75,12 +75,12 @@ class AuthFlowIntegrationTest {
     void registrar_con_email_duplicado_devuelve_409() throws Exception {
         mockMvc.perform(post("/api/v1/auth/registrar")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(registrar("Jordi", "duplicado@example.com", "Prueba12")))
+                .content(registrar("Jordi", "duplicado@example.com", "Prueba12!")))
             .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/v1/auth/registrar")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(registrar("Otro", "duplicado@example.com", "Prueba12")))
+                .content(registrar("Otro", "duplicado@example.com", "Prueba12!")))
             .andExpect(status().isConflict());
     }
 
@@ -89,7 +89,7 @@ class AuthFlowIntegrationTest {
         // Email mal formado
         mockMvc.perform(post("/api/v1/auth/registrar")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(registrar("Jordi", "no-es-email", "Prueba12")))
+                .content(registrar("Jordi", "no-es-email", "Prueba12!")))
             .andExpect(status().isBadRequest());
     }
 
@@ -97,10 +97,10 @@ class AuthFlowIntegrationTest {
     void login_con_credenciales_correctas_devuelve_token() throws Exception {
         mockMvc.perform(post("/api/v1/auth/registrar")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(registrar("Jordi", "login@example.com", "Prueba12")))
+                .content(registrar("Jordi", "login@example.com", "Prueba12!")))
             .andExpect(status().isCreated());
 
-        String token = login("login@example.com", "Prueba12");
+        String token = login("login@example.com", "Prueba12!");
 
         assertThat(token).isNotBlank();
         // JWT tiene 3 partes separadas por puntos
@@ -109,7 +109,7 @@ class AuthFlowIntegrationTest {
 
     @Test
     void login_con_email_no_registrado_devuelve_401() throws Exception {
-        String body = "{\"email\":\"nadie@example.com\",\"password\":\"Prueba12\"}";
+        String body = "{\"email\":\"nadie@example.com\",\"password\":\"Prueba12!\"}";
 
         mockMvc.perform(post("/api/v1/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -121,7 +121,7 @@ class AuthFlowIntegrationTest {
     void login_con_password_incorrecta_devuelve_401() throws Exception {
         mockMvc.perform(post("/api/v1/auth/registrar")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(registrar("Jordi", "fail@example.com", "Prueba12")))
+                .content(registrar("Jordi", "fail@example.com", "Prueba12!")))
             .andExpect(status().isCreated());
 
         String body = "{\"email\":\"fail@example.com\",\"password\":\"OtraPass99\"}";
@@ -153,14 +153,14 @@ class AuthFlowIntegrationTest {
         // 1. Registrar
         MvcResult registroResult = mockMvc.perform(post("/api/v1/auth/registrar")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(registrar("Jordi", "flujo@example.com", "Prueba12")))
+                .content(registrar("Jordi", "flujo@example.com", "Prueba12!")))
             .andExpect(status().isCreated())
             .andReturn();
         Long usuarioId = objectMapper.readTree(registroResult.getResponse().getContentAsString())
                 .get("id").asLong();
 
         // 2. Login
-        String token = login("flujo@example.com", "Prueba12");
+        String token = login("flujo@example.com", "Prueba12!");
 
         // 3. Crear hábito con el JWT
         HabitoCreateDTO habito = new HabitoCreateDTO("Leer", "20 min", "DIARIO", null, "POSITIVO", null);
