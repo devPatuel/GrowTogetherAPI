@@ -3,13 +3,13 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDate;
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 /**
  * DTO de respuesta con los datos de un consejo de bienestar.
  * Se devuelve en los endpoints de listado de consejos para usuarios y admin.
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class ConsejoDTO {
 
     /** Identificador único del consejo. */

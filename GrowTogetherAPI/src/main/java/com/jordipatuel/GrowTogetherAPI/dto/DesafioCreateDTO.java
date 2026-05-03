@@ -8,9 +8,6 @@ import lombok.NoArgsConstructor;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 /**
  * DTO para la creación de un nuevo desafío.
  * Se recibe en el endpoint POST /api/v1/desafios.
@@ -20,6 +17,9 @@ import java.util.Set;
  * Permite invitar amigos en el mismo request mediante {@code participantesIds}:
  * el servicio creará una ParticipacionDesafio en estado ACTIVO por cada uno.
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class DesafioCreateDTO {
 
     /** Nombre del desafío. Entre 2 y 100 caracteres. */

@@ -5,14 +5,14 @@ import lombok.NoArgsConstructor;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 /**
  * DTO de respuesta con los datos de un desafío.
  * Incluye el nombre del creador y la lista embebida de participantes
  * para que el cliente pueda pintar la card sin hacer llamadas adicionales.
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class DesafioDTO {
 
     /** Identificador único del desafío. */

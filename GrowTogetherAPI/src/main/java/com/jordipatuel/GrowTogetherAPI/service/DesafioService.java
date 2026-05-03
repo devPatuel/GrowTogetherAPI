@@ -35,6 +35,13 @@ public class DesafioService {
     private final UsuarioRepository usuarioRepository;
     private final ParticipacionDesafioService participacionDesafioService;
 
+    /**
+     * Inyecta los repositorios y el servicio de participaciones.
+     *
+     * @param desafioRepository repositorio de desafíos
+     * @param usuarioRepository repositorio de usuarios para resolver al creador
+     * @param participacionDesafioService servicio de participaciones (Lazy para romper ciclo)
+     */
     @Autowired
     public DesafioService(DesafioRepository desafioRepository,
                           UsuarioRepository usuarioRepository,
@@ -48,6 +55,10 @@ public class DesafioService {
      * Crea un desafío validando fechas y asigna el creador.
      * Inscribe automáticamente al creador como participante e invita a todos los
      * usuarios indicados en {@code participantesIds}.
+     *
+     * @param dto datos del nuevo desafío
+     * @param creadorId ID del usuario que crea el desafío
+     * @return el desafío creado con sus participantes embebidos
      */
     @Transactional
     public DesafioDTO crearDesafio(DesafioCreateDTO dto, Long creadorId) {
@@ -77,6 +88,10 @@ public class DesafioService {
     /**
      * Edita los campos del desafío con los valores del DTO recibido.
      * Solo el creador puede editar (controlado en el controller con {@code @PreAuthorize}).
+     *
+     * @param id ID del desafío a editar
+     * @param dto datos nuevos del desafío
+     * @return el desafío actualizado con sus participantes embebidos
      */
     @Transactional
     public DesafioDTO editarDesafio(Integer id, DesafioCreateDTO dto) {
@@ -131,6 +146,8 @@ public class DesafioService {
 
     /**
      * Devuelve todos los desafíos sin filtrar.
+     *
+     * @return lista completa de desafíos
      */
     public List<DesafioDTO> obtenerTodos() {
         return desafioRepository.findAll().stream()
@@ -140,6 +157,9 @@ public class DesafioService {
 
     /**
      * Busca un desafío por ID. Devuelve el detalle completo con participantes embebidos.
+     *
+     * @param id ID del desafío
+     * @return el desafío con la lista de participantes
      */
     public DesafioDTO obtenerPorId(Integer id) {
         return toDTO(obtenerEntidadPorId(id), true);
@@ -148,6 +168,8 @@ public class DesafioService {
     /**
      * Devuelve los desafíos activos cuya fecha de fin es posterior a ahora.
      * Usado para listar desafíos públicos (futuro: explorar desafíos comunitarios).
+     *
+     * @return lista de desafíos activos
      */
     public List<DesafioDTO> obtenerDesafiosActivos() {
         return desafioRepository.findByFechaFinAfterAndActivoTrue(new Date()).stream()
@@ -158,6 +180,9 @@ public class DesafioService {
     /**
      * Devuelve los desafíos en los que participa el usuario (como creador o participante).
      * Incluye finalizados.
+     *
+     * @param usuarioId ID del usuario
+     * @return lista de desafíos del usuario con participantes embebidos
      */
     public List<DesafioDTO> obtenerMisDesafios(Long usuarioId) {
         return desafioRepository.findMisDesafios(usuarioId).stream()
@@ -167,6 +192,8 @@ public class DesafioService {
 
     /**
      * Cuenta los desafíos activos. Usado por el endpoint de métricas del admin.
+     *
+     * @return número de desafíos activos
      */
     public long contarDesafiosActivos() {
         return desafioRepository.countByFechaFinAfterAndActivoTrue(new Date());
@@ -174,6 +201,8 @@ public class DesafioService {
 
     /**
      * Desactiva el desafío (soft delete).
+     *
+     * @param id ID del desafío a desactivar
      */
     public void eliminarDesafio(Integer id) {
         Desafio desafio = obtenerEntidadPorId(id);
@@ -184,6 +213,10 @@ public class DesafioService {
     /**
      * Verifica si el usuario indicado es el creador del desafío.
      * Usado por {@code @PreAuthorize} en el controller para control de acceso.
+     *
+     * @param desafioId ID del desafío
+     * @param usuarioId ID del usuario a comprobar
+     * @return true si el usuario es el creador del desafío
      */
     public boolean isCreator(Integer desafioId, Long usuarioId) {
         Desafio desafio = desafioRepository.findById(desafioId).orElse(null);
@@ -202,6 +235,10 @@ public class DesafioService {
      * Convierte la entidad {@link Desafio} al DTO de respuesta.
      * Cuando {@code conParticipantes} es true, incluye la lista ordenada por puntos
      * con posición, racha, foto y completadoHoy de cada participante.
+     *
+     * @param desafio entidad origen
+     * @param conParticipantes si true se embeben los participantes
+     * @return el {@link DesafioDTO} equivalente
      */
     private DesafioDTO toDTO(Desafio desafio, boolean conParticipantes) {
         DesafioDTO dto = new DesafioDTO();
@@ -231,6 +268,9 @@ public class DesafioService {
 
     /**
      * Construye una nueva entidad {@link Desafio} a partir del DTO de creación.
+     *
+     * @param dto DTO con los datos del nuevo desafío
+     * @return entidad sin persistir
      */
     private Desafio toEntity(DesafioCreateDTO dto) {
         Desafio desafio = new Desafio();
@@ -252,6 +292,9 @@ public class DesafioService {
 
     /**
      * Convierte un Set de Strings con nombres de días a un Set de {@link DiaSemana}.
+     *
+     * @param dias conjunto de strings (ej: "LUNES", "MARTES")
+     * @return conjunto de enums equivalente
      */
     private Set<DiaSemana> parseDias(Set<String> dias) {
         if (dias == null || dias.isEmpty()) return new HashSet<>();

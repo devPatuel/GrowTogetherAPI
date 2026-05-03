@@ -32,6 +32,12 @@ public class DesafioController {
     private final DesafioService desafioService;
     private final ParticipacionDesafioService participacionDesafioService;
 
+    /**
+     * Inyecta los servicios necesarios para gestionar desafíos y participaciones.
+     *
+     * @param desafioService servicio principal de desafíos
+     * @param participacionDesafioService servicio de participaciones, ranking e historial
+     */
     @Autowired
     public DesafioController(DesafioService desafioService, ParticipacionDesafioService participacionDesafioService) {
         this.desafioService = desafioService;
@@ -43,6 +49,10 @@ public class DesafioController {
      * El creador queda inscrito automáticamente como participante. Se pueden invitar
      * amigos en el mismo request mediante {@code participantesIds}.
      * POST /api/v1/desafios
+     *
+     * @param dto datos del nuevo desafío
+     * @param authentication contexto de seguridad para extraer el creador
+     * @return el desafío creado con código 201
      */
     @PreAuthorize("isAuthenticated()")
     @PostMapping
@@ -55,6 +65,10 @@ public class DesafioController {
     /**
      * Edita un desafío existente. Solo accesible por el creador.
      * PUT /api/v1/desafios/{id}
+     *
+     * @param id ID del desafío a editar
+     * @param dto datos nuevos del desafío
+     * @return el desafío actualizado
      */
     @PreAuthorize("@desafioService.isCreator(#id, authentication.principal.id)")
     @PutMapping("/{id}")
@@ -66,6 +80,9 @@ public class DesafioController {
      * Devuelve los desafíos en los que participa el usuario autenticado.
      * Incluye los que creó y aquellos a los que se ha unido. Activos y finalizados.
      * GET /api/v1/desafios/mios
+     *
+     * @param authentication contexto de seguridad para extraer el usuario
+     * @return lista de desafíos del usuario
      */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/mios")
@@ -78,6 +95,8 @@ public class DesafioController {
      * Devuelve los desafíos activos (fecha de fin posterior a ahora).
      * Pensado para "explorar desafíos comunitarios" (uso futuro).
      * GET /api/v1/desafios/activos
+     *
+     * @return lista de desafíos activos
      */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/activos")
@@ -88,6 +107,10 @@ public class DesafioController {
     /**
      * Inscribe al usuario autenticado en el desafío indicado.
      * POST /api/v1/desafios/{id}/unirse
+     *
+     * @param id ID del desafío al que unirse
+     * @param authentication contexto de seguridad para extraer el usuario
+     * @return la participación creada con código 201
      */
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/{id}/unirse")
@@ -103,6 +126,10 @@ public class DesafioController {
      * Marca como ABANDONADO al usuario autenticado en el desafío indicado.
      * El histórico de registros se conserva.
      * DELETE /api/v1/desafios/{id}/abandonar
+     *
+     * @param id ID del desafío a abandonar
+     * @param authentication contexto de seguridad para extraer el usuario
+     * @return la participación marcada como ABANDONADO
      */
     @PreAuthorize("isAuthenticated()")
     @DeleteMapping("/{id}/abandonar")
@@ -117,6 +144,11 @@ public class DesafioController {
      * Marca el desafío como completado por el usuario autenticado en la fecha indicada
      * (por defecto hoy). Recalcula racha y puntos.
      * POST /api/v1/desafios/{id}/completar
+     *
+     * @param id ID del desafío a completar
+     * @param fecha fecha del registro (opcional, por defecto hoy)
+     * @param authentication contexto de seguridad para extraer el usuario
+     * @return la participación con racha y puntos actualizados
      */
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/{id}/completar")
@@ -131,6 +163,11 @@ public class DesafioController {
     /**
      * Revierte a PENDIENTE el día indicado para el usuario autenticado.
      * POST /api/v1/desafios/{id}/descompletar
+     *
+     * @param id ID del desafío a descompletar
+     * @param fecha fecha del registro a revertir (opcional, por defecto hoy)
+     * @param authentication contexto de seguridad para extraer el usuario
+     * @return la participación con racha y puntos recalculados
      */
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/{id}/descompletar")
@@ -145,6 +182,9 @@ public class DesafioController {
     /**
      * Devuelve el ranking de participantes del desafío ordenado por puntos.
      * GET /api/v1/desafios/{id}/ranking
+     *
+     * @param id ID del desafío
+     * @return lista de participaciones ordenadas por puntos descendente
      */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}/ranking")
@@ -156,6 +196,11 @@ public class DesafioController {
      * Devuelve el historial de registros diarios de todos los participantes.
      * Usado por la gráfica multilínea de evolución de puntos.
      * GET /api/v1/desafios/{id}/historial
+     *
+     * @param id ID del desafío
+     * @param fechaInicio fecha inicial del rango (opcional)
+     * @param fechaFin fecha final del rango (opcional)
+     * @return lista de registros diarios para la gráfica
      */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}/historial")
@@ -169,6 +214,9 @@ public class DesafioController {
     /**
      * Elimina (soft delete) el desafío. Solo accesible por el creador.
      * DELETE /api/v1/desafios/{id}
+     *
+     * @param id ID del desafío a eliminar
+     * @return 204 No Content
      */
     @PreAuthorize("@desafioService.isCreator(#id, authentication.principal.id)")
     @DeleteMapping("/{id}")
@@ -180,6 +228,9 @@ public class DesafioController {
     /**
      * Devuelve el detalle de un desafío concreto con participantes embebidos.
      * GET /api/v1/desafios/{id}
+     *
+     * @param id ID del desafío
+     * @return el desafío con la lista de participantes
      */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/{id}")

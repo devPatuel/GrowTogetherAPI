@@ -26,6 +26,11 @@ import java.util.stream.Collectors;
 public class AuditService {
     private final AuditLogRepository auditLogRepository;
 
+    /**
+     * Inyecta el repositorio del audit log.
+     *
+     * @param auditLogRepository repositorio JPA de {@link AuditLog}
+     */
     @Autowired
     public AuditService(AuditLogRepository auditLogRepository) {
         this.auditLogRepository = auditLogRepository;
@@ -34,6 +39,14 @@ public class AuditService {
     /**
      * Crea un nuevo registro de auditoría con la acción, entidad afectada,
      * usuario que la ejecutó, detalle y dirección IP de la petición.
+     *
+     * @param accion identificador corto de la acción (ej: {@code RESET_PASSWORD}, {@code ELIMINAR})
+     * @param entidad nombre de la entidad afectada (ej: {@code Usuario}, {@code Consejo})
+     * @param entidadId ID de la entidad afectada (puede ser null)
+     * @param usuarioId ID del admin que realizó la acción
+     * @param usuarioEmail email del admin que realizó la acción
+     * @param detalle texto descriptivo libre con contexto adicional
+     * @param ip dirección IP desde la que se realizó la acción
      */
     public void registrar(String accion, String entidad, Long entidadId,
                           Long usuarioId, String usuarioEmail, String detalle, String ip) {
@@ -51,6 +64,8 @@ public class AuditService {
 
     /**
      * Devuelve los últimos 100 registros de auditoría ordenados por fecha descendente.
+     *
+     * @return lista de {@link AuditLogDTO}
      */
     public List<AuditLogDTO> obtenerUltimos() {
         return auditLogRepository.findTop100ByOrderByFechaDesc().stream()
@@ -60,6 +75,9 @@ public class AuditService {
 
     /**
      * Devuelve los últimos 100 registros de auditoría de un usuario concreto.
+     *
+     * @param usuarioId ID del admin cuyas acciones se quieren listar
+     * @return lista de {@link AuditLogDTO}
      */
     public List<AuditLogDTO> obtenerPorUsuario(Long usuarioId) {
         return auditLogRepository.findTop100ByUsuarioIdOrderByFechaDesc(usuarioId).stream()
@@ -69,6 +87,9 @@ public class AuditService {
 
     /**
      * Devuelve todos los registros de auditoría de un tipo de entidad concreto.
+     *
+     * @param entidad nombre de la entidad afectada (ej: {@code Usuario}, {@code Consejo})
+     * @return lista de {@link AuditLogDTO}
      */
     public List<AuditLogDTO> obtenerPorEntidad(String entidad) {
         return auditLogRepository.findByEntidadOrderByFechaDesc(entidad).stream()

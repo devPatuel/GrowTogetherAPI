@@ -40,8 +40,13 @@ public class Consejo {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String descripcion;
 
-    /** Fecha en la que se mostrará este consejo a los usuarios. Debe ser única. */
-    @Column(name = "fecha_publicacion")
+    /**
+     * Fecha en la que se mostrará este consejo a los usuarios. Opcional.
+     * Cuando tiene valor debe ser única (constraint UNIQUE a nivel de BD):
+     * solo puede haber un consejo programado por día. Múltiples consejos
+     * sin fecha asignada conviven sin restricción.
+     */
+    @Column(name = "fecha_publicacion", unique = true)
     private LocalDate fechaPublicacion;
 
     /** Indica si el consejo es visible para los usuarios. */

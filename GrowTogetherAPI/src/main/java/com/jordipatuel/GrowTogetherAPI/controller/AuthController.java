@@ -35,6 +35,14 @@ public class AuthController {
     private final JwtService jwtService;
     private final AuditService auditService;
 
+    /**
+     * Inyecta los servicios necesarios para autenticación y registro.
+     *
+     * @param usuarioService gestión y registro de usuarios
+     * @param authenticationManager componente de Spring Security para validar credenciales
+     * @param jwtService generación de tokens JWT firmados
+     * @param auditService persistencia de los intentos de login (OK y fallidos)
+     */
     @Autowired
     public AuthController(UsuarioService usuarioService, AuthenticationManager authenticationManager,
                           JwtService jwtService, AuditService auditService) {
@@ -47,6 +55,9 @@ public class AuthController {
     /**
      * Registra un nuevo usuario. Valida el DTO de entrada y devuelve el DTO del usuario creado.
      * POST /api/v1/auth/registrar
+     *
+     * @param dto datos del nuevo usuario (nombre, email, password y foto opcional)
+     * @return el usuario creado con código 201
      */
     @PostMapping("/registrar")
     public ResponseEntity<UsuarioDTO> registrarUsuario(@Valid @RequestBody UsuarioCreateDTO dto) {
@@ -55,9 +66,13 @@ public class AuthController {
     }
     /**
      * Autentica al usuario con email y contraseña y devuelve el JWT junto con
-     * los datos básicos del usuario (id, nombre, email, tema, idioma).
+     * los datos básicos del usuario (id, nombre, email, rol, tema, idioma).
      * Registra el resultado en el audit log. Devuelve 401 si las credenciales son incorrectas.
      * POST /api/v1/auth/login
+     *
+     * @param loginRequest credenciales (email y password)
+     * @param request petición HTTP, usada para registrar la IP en el audit log
+     * @return 200 con token y perfil básico, o 401 si las credenciales no son válidas
      */
     @PostMapping("/login")
     public ResponseEntity<?> iniciarSesion(@Valid @RequestBody LoginRequest loginRequest, HttpServletRequest request) {
@@ -79,6 +94,7 @@ public class AuthController {
                 "usuarioId", usuarioInfo.getId(),
                 "nombre", usuarioInfo.getNombre(),
                 "email", usuarioInfo.getEmail(),
+                "rol", usuarioInfo.getRol().name(),
                 "tema", usuarioInfo.getTema(),
                 "idioma", usuarioInfo.getIdioma()
             ));
@@ -93,6 +109,9 @@ public class AuthController {
      * Stub de recuperación de contraseña. Siempre devuelve 200 con un mensaje genérico
      * independientemente de si el email existe, para no filtrar información.
      * POST /api/v1/auth/recuperar
+     *
+     * @param request cuerpo con el email del usuario que quiere recuperar la contraseña
+     * @return 200 con mensaje genérico
      */
     @PostMapping("/recuperar")
     public ResponseEntity<String> recuperarContrasena(@RequestBody RecuperarRequest request) {
@@ -103,6 +122,8 @@ public class AuthController {
      */
     @Data
     public static class LoginRequest {
+        /** Constructor sin argumentos requerido por Jackson para deserializar el body. */
+        public LoginRequest() {}
         @NotBlank(message = "El email es requerido")
         private String email;
         @NotBlank(message = "La contraseña es requerida")
@@ -113,6 +134,9 @@ public class AuthController {
      */
     @Data
     public static class RecuperarRequest {
+        /** Constructor sin argumentos requerido por Jackson para deserializar el body. */
+        public RecuperarRequest() {}
+        /** Email del usuario que solicita recuperar la contraseña. */
         private String email;
     }
 }

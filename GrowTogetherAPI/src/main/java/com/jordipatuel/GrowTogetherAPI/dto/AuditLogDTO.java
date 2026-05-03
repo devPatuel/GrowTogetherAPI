@@ -2,16 +2,18 @@ package com.jordipatuel.GrowTogetherAPI.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import java.util.Date;
 
-@Data
-@AllArgsConstructor
 /**
  * DTO de respuesta con los datos de un log de auditoría.
  * Solo accesible por administradores en GET /api/v1/admin/audit.
  * No existe DTO de creación porque los logs los genera el sistema automáticamente
  * ante acciones sensibles, nunca el cliente directamente.
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class AuditLogDTO {
 
     /** Identificador único del log. */

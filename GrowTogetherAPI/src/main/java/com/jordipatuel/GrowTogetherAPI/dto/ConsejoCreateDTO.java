@@ -5,9 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDate;
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 /**
  * DTO para la creación de un consejo de bienestar.
  * Solo accesible por usuarios con rol ADMIN a través de POST /api/v1/admin/recursos.
@@ -15,6 +12,9 @@ import java.time.LocalDate;
  * Si no se indica activo, el servicio lo crea como activo por defecto.
  * El creadorId se extrae del token JWT del admin, no se recibe en el DTO.
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class ConsejoCreateDTO {
 
     /** Título del consejo. Entre 2 y 200 caracteres. */

@@ -35,6 +35,13 @@ public class UsuarioController {
     private final UsuarioService usuarioService;
     private final ConsejoService consejoService;
     private final SolicitudAmistadService solicitudAmistadService;
+    /**
+     * Inyecta los servicios necesarios para usuarios, consejos y amistades.
+     *
+     * @param usuarioService servicio principal de usuarios
+     * @param consejoService servicio de consejos diarios
+     * @param solicitudAmistadService servicio de solicitudes de amistad
+     */
     @Autowired
     public UsuarioController(UsuarioService usuarioService,
                              ConsejoService consejoService,
@@ -47,6 +54,9 @@ public class UsuarioController {
     /**
      * Devuelve el perfil del usuario. Solo accesible por el propio usuario.
      * GET /api/v1/usuarios/perfil/{id}
+     *
+     * @param id ID del usuario solicitado
+     * @return perfil del usuario
      */
     @PreAuthorize("isAuthenticated() and #id == authentication.principal.id")
     @GetMapping("/perfil/{id}")
@@ -56,6 +66,10 @@ public class UsuarioController {
     /**
      * Actualiza nombre, email y/o foto del perfil. Solo accesible por el propio usuario.
      * PUT /api/v1/usuarios/perfil/{id}
+     *
+     * @param id ID del usuario
+     * @param request nuevos valores de nombre, email y foto
+     * @return perfil actualizado
      */
     @PreAuthorize("isAuthenticated() and #id == authentication.principal.id")
     @PutMapping("/perfil/{id}")
@@ -68,6 +82,10 @@ public class UsuarioController {
     /**
      * Cambia la contraseña verificando la actual. Solo accesible por el propio usuario.
      * PUT /api/v1/usuarios/perfil/{id}/contrasena
+     *
+     * @param id ID del usuario
+     * @param request contraseña actual y nueva
+     * @return mensaje de confirmación
      */
     @PreAuthorize("isAuthenticated() and #id == authentication.principal.id")
     @PutMapping("/perfil/{id}/contrasena")
@@ -80,6 +98,9 @@ public class UsuarioController {
     /**
      * Busca usuarios por nombre o email. Requiere mínimo 1 carácter y máximo 100.
      * GET /api/v1/usuarios/buscar?q=
+     *
+     * @param q texto a buscar (1-100 caracteres)
+     * @return lista de usuarios que coinciden
      */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/buscar")
@@ -89,6 +110,10 @@ public class UsuarioController {
     /**
      * Agrega al usuario autenticado como amigo del usuario indicado (relación bidireccional).
      * POST /api/v1/usuarios/amigos/{amigoId}
+     *
+     * @param amigoId ID del usuario a añadir como amigo
+     * @param authentication contexto de seguridad para extraer el usuario
+     * @return mensaje de confirmación
      */
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/amigos/{amigoId}")
@@ -102,6 +127,9 @@ public class UsuarioController {
     /**
      * Devuelve la lista de amigos del usuario autenticado.
      * GET /api/v1/usuarios/amigos
+     *
+     * @param authentication contexto de seguridad para extraer el usuario
+     * @return lista de amigos del usuario
      */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/amigos")
@@ -112,6 +140,10 @@ public class UsuarioController {
     /**
      * Elimina la relación de amistad en ambas direcciones.
      * DELETE /api/v1/usuarios/amigos/{amigoId}
+     *
+     * @param amigoId ID del amigo a eliminar
+     * @param authentication contexto de seguridad para extraer el usuario
+     * @return mensaje de confirmación
      */
     @PreAuthorize("isAuthenticated()")
     @DeleteMapping("/amigos/{amigoId}")
@@ -125,15 +157,37 @@ public class UsuarioController {
     /**
      * Devuelve los consejos activos publicados hasta hoy.
      * GET /api/v1/usuarios/consejos
+     *
+     * @return lista de consejos visibles para el usuario
      */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/consejos")
     public ResponseEntity<List<ConsejoDTO>> verConsejosPublicos() {
         return ResponseEntity.ok(consejoService.obtenerConsejosVisibles());
     }
+
+    /**
+     * Devuelve el consejo activo asignado a la fecha de hoy. Si no hay consejo
+     * para hoy, responde 204 No Content. La app móvil lo consume para mostrar
+     * el "consejo del día" en el dashboard.
+     * GET /api/v1/usuarios/consejo/hoy
+     *
+     * @return consejo de hoy o 204 si no hay
+     */
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/consejo/hoy")
+    public ResponseEntity<ConsejoDTO> verConsejoDeHoy() {
+        return consejoService.obtenerConsejoDeHoy()
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
+    }
     /**
      * Actualiza las preferencias de tema e idioma del usuario. Solo accesible por el propio usuario.
      * PUT /api/v1/usuarios/perfil/{id}/preferencias
+     *
+     * @param id ID del usuario
+     * @param request nuevos valores de tema e idioma
+     * @return perfil actualizado
      */
     @PreAuthorize("isAuthenticated() and #id == authentication.principal.id")
     @PutMapping("/perfil/{id}/preferencias")
@@ -149,6 +203,9 @@ public class UsuarioController {
      * Usado por el buscador de amigos para poder localizar a alguien conocido por su ID.
      * No expone email ni rol.
      * GET /api/v1/usuarios/publico/{id}
+     *
+     * @param id ID del usuario a consultar
+     * @return datos públicos del usuario
      */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/publico/{id}")
@@ -159,6 +216,10 @@ public class UsuarioController {
     /**
      * Envía una solicitud de amistad al usuario indicado (requiere autenticación).
      * POST /api/v1/usuarios/amistades/solicitudes/{destinatarioId}
+     *
+     * @param destinatarioId ID del usuario al que se envía la solicitud
+     * @param authentication contexto de seguridad para extraer el remitente
+     * @return solicitud creada
      */
     @PreAuthorize("isAuthenticated()")
     @PostMapping("/amistades/solicitudes/{destinatarioId}")
@@ -172,6 +233,9 @@ public class UsuarioController {
     /**
      * Devuelve las solicitudes de amistad pendientes recibidas por el usuario autenticado.
      * GET /api/v1/usuarios/amistades/solicitudes/recibidas
+     *
+     * @param authentication contexto de seguridad para extraer el usuario
+     * @return lista de solicitudes pendientes recibidas
      */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/amistades/solicitudes/recibidas")
@@ -183,6 +247,9 @@ public class UsuarioController {
     /**
      * Devuelve las solicitudes de amistad pendientes enviadas por el usuario autenticado.
      * GET /api/v1/usuarios/amistades/solicitudes/enviadas
+     *
+     * @param authentication contexto de seguridad para extraer el usuario
+     * @return lista de solicitudes pendientes enviadas
      */
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/amistades/solicitudes/enviadas")
@@ -195,6 +262,10 @@ public class UsuarioController {
      * Acepta una solicitud de amistad pendiente. Solo el destinatario puede hacerlo.
      * Crea la relación de amistad bidireccional.
      * PUT /api/v1/usuarios/amistades/solicitudes/{id}/aceptar
+     *
+     * @param id ID de la solicitud a aceptar
+     * @param authentication contexto de seguridad para extraer el destinatario
+     * @return solicitud actualizada en estado ACEPTADA
      */
     @PreAuthorize("isAuthenticated()")
     @PutMapping("/amistades/solicitudes/{id}/aceptar")
@@ -208,6 +279,10 @@ public class UsuarioController {
     /**
      * Rechaza una solicitud de amistad pendiente. Solo el destinatario puede hacerlo.
      * PUT /api/v1/usuarios/amistades/solicitudes/{id}/rechazar
+     *
+     * @param id ID de la solicitud a rechazar
+     * @param authentication contexto de seguridad para extraer el destinatario
+     * @return solicitud actualizada en estado RECHAZADA
      */
     @PreAuthorize("isAuthenticated()")
     @PutMapping("/amistades/solicitudes/{id}/rechazar")
@@ -221,6 +296,10 @@ public class UsuarioController {
     /**
      * Cancela una solicitud pendiente enviada por el usuario autenticado (solo el remitente).
      * DELETE /api/v1/usuarios/amistades/solicitudes/{id}
+     *
+     * @param id ID de la solicitud a cancelar
+     * @param authentication contexto de seguridad para extraer el remitente
+     * @return mensaje de confirmación
      */
     @PreAuthorize("isAuthenticated()")
     @DeleteMapping("/amistades/solicitudes/{id}")
@@ -256,8 +335,8 @@ public class UsuarioController {
         private String currentPassword;
         @NotBlank(message = "La nueva contraseña es obligatoria")
         @Size(min = 8, max = 100, message = "La contraseña debe tener entre 8 y 100 caracteres")
-        @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d).+$",
-                message = "La contraseña debe contener al menos una mayúscula, una minúscula y un dígito")
+        @Pattern(regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).+$",
+                message = "La contraseña debe contener al menos una mayúscula, una minúscula, un dígito y un carácter especial")
         private String newPassword;
     }
     /**

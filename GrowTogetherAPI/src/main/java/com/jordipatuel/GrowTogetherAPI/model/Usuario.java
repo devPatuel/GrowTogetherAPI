@@ -76,6 +76,20 @@ public class Usuario {
     @Column(nullable = false)
     private boolean activo = true;
 
+    /**
+     * Motivo registrado por el admin al bloquear la cuenta. Solo tiene valor cuando activo=false
+     * tras un bloqueo manual. Se limpia al desbloquear.
+     */
+    @Size(max = 500, message = "El motivo de bloqueo no puede superar los 500 caracteres")
+    @Column(name = "motivo_bloqueo", length = 500)
+    private String motivoBloqueo;
+
+    /**
+     * Fecha en la que el admin bloqueó la cuenta. Se limpia al desbloquear.
+     */
+    @Column(name = "fecha_bloqueo")
+    private Date fechaBloqueo;
+
     /** Tema visual de la app seleccionado por el usuario. Por defecto CLARO. */
     @Column(nullable = false, length = 20)
     private String tema = "CLARO";

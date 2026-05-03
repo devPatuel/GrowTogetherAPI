@@ -30,13 +30,24 @@ import java.util.List;
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final RateLimitFilter rateLimitFilter;
+    private final JwtAuthenticationEntryPoint jwtAuthEntryPoint;
 
     @Value("${app.cors.allowed-origins}")
     private List<String> allowedOriginPatterns;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter, RateLimitFilter rateLimitFilter) {
+    /**
+     * Inyecta los filtros y el entry point necesarios para la cadena de seguridad.
+     *
+     * @param jwtAuthFilter filtro que valida el JWT en cada petición
+     * @param rateLimitFilter filtro que limita las peticiones a /auth
+     * @param jwtAuthEntryPoint entry point que devuelve 401 ante peticiones anónimas
+     */
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter,
+                          RateLimitFilter rateLimitFilter,
+                          JwtAuthenticationEntryPoint jwtAuthEntryPoint) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.rateLimitFilter = rateLimitFilter;
+        this.jwtAuthEntryPoint = jwtAuthEntryPoint;
     }
 
     /**
@@ -48,6 +59,10 @@ public class SecurityConfig {
      * - Rutas admin: requieren rol ADMIN
      * - Resto: requieren autenticación JWT
      * - Filtros: RateLimitFilter → JwtAuthenticationFilter → resto de la cadena
+     *
+     * @param http builder de configuración de seguridad inyectado por Spring
+     * @return la cadena de filtros construida
+     * @throws Exception si la configuración de Spring Security falla
      */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -64,6 +79,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
+            .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthEntryPoint))
             .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
@@ -89,6 +105,10 @@ public class SecurityConfig {
      * Expone el {@link AuthenticationManager} como bean para que
      * {@link com.jordipatuel.GrowTogetherAPI.controller.AuthController}
      * pueda usarlo en el proceso de login.
+     *
+     * @param authenticationConfiguration configuración de autenticación de Spring
+     * @return el {@link AuthenticationManager} construido
+     * @throws Exception si Spring no puede resolver el manager
      */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
