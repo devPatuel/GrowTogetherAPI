@@ -1,6 +1,10 @@
 HELP.md
 .gradle
 build/
+
+### Configuracion local con secretos (NO commitear) ###
+src/main/resources/application-dev.properties
+
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/

@@ -1,0 +1,19 @@
+# Plantilla de configuracion local. Copiar a application-dev.properties
+# y rellenar valores reales. El fichero application-dev.properties NO se
+# commitea (esta en .gitignore).
+#
+# Estos valores SOLO aplican a desarrollo local con tu Postgres en localhost.
+# Las credenciales de produccion viven en /opt/growtogether/.env de la EC2,
+# fuera de cualquier repo.
+
+# Usuario y password de tu Postgres local. Si arrancaste Postgres con
+# docker-compose.local.yml, los valores son los del compose (gt / dev_password).
+# Si tienes un Postgres instalado nativamente, el que tu hayas configurado.
+spring.datasource.username=root
+spring.datasource.password=test
+
+# JWT_SECRET para desarrollo local. Genera uno propio con:
+#   openssl rand -base64 48
+# Solo necesita ser una cadena Base64 valida (la libreria JJWT la decodifica).
+# Para desarrollo da igual cual sea, no se comparte con produccion.
+JWT_SECRET=GENERAR_NUEVO_CON_OPENSSL_RAND_BASE64_48
