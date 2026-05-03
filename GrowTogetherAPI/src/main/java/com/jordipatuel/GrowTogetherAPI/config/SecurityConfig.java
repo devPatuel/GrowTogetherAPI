@@ -1,4 +1,5 @@
 package com.jordipatuel.GrowTogetherAPI.config;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.context.annotation.Bean;
@@ -29,6 +30,10 @@ import java.util.List;
 public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final RateLimitFilter rateLimitFilter;
+
+    @Value("${app.cors.allowed-origins}")
+    private List<String> allowedOriginPatterns;
+
     public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter, RateLimitFilter rateLimitFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.rateLimitFilter = rateLimitFilter;
@@ -54,6 +59,7 @@ public class SecurityConfig {
             )
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
@@ -63,14 +69,15 @@ public class SecurityConfig {
         return http.build();
     }
     /**
-     * Configura los orígenes CORS permitidos:
-     * localhost (desarrollo), 10.0.2.2 (emulador Android) y 192.168.x.x (red local).
-     * En producción debe restringirse al dominio real de la aplicación.
+     * Configura los orígenes CORS permitidos. La lista se inyecta desde la
+     * propiedad {@code app.cors.allowed-origins} (por defecto en
+     * {@code application.properties}, sobreescribible con la variable de
+     * entorno {@code CORS_ORIGINS} en producción).
      */
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of("http://localhost:*", "http://10.0.2.2:*", "http://192.168.*.*:*"));
+        configuration.setAllowedOriginPatterns(allowedOriginPatterns);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);

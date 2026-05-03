@@ -1,0 +1,16 @@
+# Carpetas de build que no deben copiarse al contexto de Docker.
+build/
+.gradle/
+
+# Configuracion de IDE
+.idea/
+*.iml
+.vscode/
+
+# Properties de desarrollo local: contienen credenciales que NO deben
+# acabar en la imagen.
+src/main/resources/application-dev.properties
+
+# Git
+.git/
+.gitignore
