@@ -4,14 +4,14 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.util.Date;
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 /**
  * DTO de respuesta con los datos de la participación de un usuario en un desafío.
  * Se usa en el endpoint de ranking y embebido en {@link DesafioDTO} para listar
  * a todos los participantes con sus métricas (puntos, racha, posición, foto).
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class ParticipacionDesafioDTO {
 
     /** Identificador único de la participación. */

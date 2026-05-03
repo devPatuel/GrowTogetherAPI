@@ -5,15 +5,15 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.util.Date;
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 /**
  * DTO para registrar la participación de un usuario en un desafío.
  * Usado internamente por el servicio al procesar POST /api/v1/desafios/{id}/unirse.
  * El usuarioId se extrae del token JWT y el desafioId de la URL,
  * por lo que el cliente no necesita enviar estos campos explícitamente.
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class ParticipacionDesafioCreateDTO {
 
     /** Fecha en la que el usuario se une al desafío. */

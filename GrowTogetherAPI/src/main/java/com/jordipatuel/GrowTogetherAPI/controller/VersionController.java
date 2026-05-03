@@ -19,6 +19,11 @@ import java.util.Map;
 @RequestMapping("/api/v1/auth/version")
 public class VersionController {
 
+    /**
+     * Devuelve un JSON estático con el nombre del servicio y un identificador de despliegue.
+     *
+     * @return mapa con los pares "service" y "deploy"
+     */
     @GetMapping
     public Map<String, String> version() {
         return Map.of(

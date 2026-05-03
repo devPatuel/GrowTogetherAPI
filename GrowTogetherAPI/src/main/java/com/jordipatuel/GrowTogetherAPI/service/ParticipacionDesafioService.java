@@ -45,6 +45,14 @@ public class ParticipacionDesafioService {
     private final UsuarioRepository usuarioRepository;
     private final RegistroDesafioRepository registroDesafioRepository;
 
+    /**
+     * Inyecta los repositorios necesarios para participaciones, desafíos, usuarios y registros.
+     *
+     * @param participacionDesafioRepository repositorio de participaciones
+     * @param desafioRepository repositorio de desafíos
+     * @param usuarioRepository repositorio de usuarios
+     * @param registroDesafioRepository repositorio de registros diarios del desafío
+     */
     @Autowired
     public ParticipacionDesafioService(
             ParticipacionDesafioRepository participacionDesafioRepository,
@@ -60,6 +68,10 @@ public class ParticipacionDesafioService {
     /**
      * Inscribe al usuario en el desafío validando que no esté ya apuntado
      * y que el desafío no haya finalizado. Inicializa el estado a ACTIVO y puntos a 0.
+     *
+     * @param desafioId ID del desafío
+     * @param usuarioId ID del usuario que se inscribe
+     * @return la participación creada
      */
     public ParticipacionDesafioDTO unirseADesafio(Integer desafioId, Long usuarioId) {
         if (participacionDesafioRepository.findByDesafioIdAndUsuarioId(desafioId, usuarioId).isPresent()) {
@@ -79,6 +91,10 @@ public class ParticipacionDesafioService {
     /**
      * Crea una participación si el usuario no estaba ya inscrito. Sin lanzar excepción si lo está.
      * Pensado para el flujo de invitar amigos al crear el desafío.
+     *
+     * @param desafio desafío al que se inscribe el usuario
+     * @param usuarioId ID del usuario a inscribir
+     * @return la participación existente o la recién creada
      */
     public ParticipacionDesafio crearParticipacionSiNoExiste(Desafio desafio, Long usuarioId) {
         Optional<ParticipacionDesafio> existente = participacionDesafioRepository
@@ -92,6 +108,9 @@ public class ParticipacionDesafioService {
     /**
      * Devuelve los participantes de un desafío ordenados por puntos de mayor a menor.
      * Asigna posiciones 1, 2, 3... y rellena completadoHoy / foto en el DTO.
+     *
+     * @param desafioId ID del desafío
+     * @return lista de participaciones con posición y métricas
      */
     public List<ParticipacionDesafioDTO> obtenerRanking(Integer desafioId) {
         List<ParticipacionDesafio> ranking = participacionDesafioRepository
@@ -101,6 +120,9 @@ public class ParticipacionDesafioService {
 
     /**
      * Devuelve todos los desafíos en los que participa un usuario.
+     *
+     * @param usuarioId ID del usuario
+     * @return lista de participaciones del usuario
      */
     public List<ParticipacionDesafioDTO> obtenerPorUsuario(Long usuarioId) {
         return participacionDesafioRepository.findByUsuarioId(usuarioId).stream()
@@ -110,6 +132,9 @@ public class ParticipacionDesafioService {
 
     /**
      * Devuelve todas las participaciones de un desafío concreto.
+     *
+     * @param desafioId ID del desafío
+     * @return lista de participaciones con posición y métricas
      */
     public List<ParticipacionDesafioDTO> obtenerPorDesafio(Integer desafioId) {
         return mapearConPosicion(participacionDesafioRepository
@@ -118,6 +143,8 @@ public class ParticipacionDesafioService {
 
     /**
      * Devuelve todas las participaciones sin filtrar.
+     *
+     * @return lista completa de participaciones
      */
     public List<ParticipacionDesafioDTO> obtenerTodos() {
         return participacionDesafioRepository.findAll().stream()
@@ -128,6 +155,11 @@ public class ParticipacionDesafioService {
     /**
      * Marca el desafío como COMPLETADO en la fecha indicada (por defecto hoy).
      * Si ya estaba COMPLETADO no hace nada. Recalcula racha y puntos del participante.
+     *
+     * @param desafioId ID del desafío
+     * @param usuarioId ID del usuario participante
+     * @param fecha fecha del registro (puede ser null para usar hoy)
+     * @return la participación con racha y puntos actualizados
      */
     @Transactional
     public ParticipacionDesafioDTO completarDesafio(Integer desafioId, Long usuarioId, LocalDate fecha) {
@@ -170,6 +202,11 @@ public class ParticipacionDesafioService {
     /**
      * Revierte el desafío a PENDIENTE en la fecha indicada (por defecto hoy).
      * Si no había registro o ya era PENDIENTE no hace nada. Recalcula racha y puntos.
+     *
+     * @param desafioId ID del desafío
+     * @param usuarioId ID del usuario participante
+     * @param fecha fecha del registro a revertir (puede ser null para usar hoy)
+     * @return la participación con racha y puntos recalculados
      */
     @Transactional
     public ParticipacionDesafioDTO descompletarDesafio(Integer desafioId, Long usuarioId, LocalDate fecha) {
@@ -196,6 +233,10 @@ public class ParticipacionDesafioService {
     /**
      * Marca la participación como ABANDONADO. El participante deja de aparecer en el podio
      * pero conserva su histórico de registros para no perder la gráfica.
+     *
+     * @param desafioId ID del desafío
+     * @param usuarioId ID del usuario que abandona
+     * @return la participación marcada como ABANDONADO
      */
     @Transactional
     public ParticipacionDesafioDTO abandonarDesafio(Integer desafioId, Long usuarioId) {
@@ -207,6 +248,11 @@ public class ParticipacionDesafioService {
     /**
      * Devuelve el historial de registros del desafío para todos los participantes
      * en el rango indicado. Usado por la gráfica multilínea.
+     *
+     * @param desafioId ID del desafío
+     * @param fechaInicio fecha inicial del rango (puede ser null)
+     * @param fechaFin fecha final del rango (puede ser null)
+     * @return lista de registros para alimentar la gráfica
      */
     public List<RegistroDesafioDTO> obtenerHistorial(Integer desafioId, LocalDate fechaInicio, LocalDate fechaFin) {
         List<RegistroDesafio> registros;
@@ -221,6 +267,8 @@ public class ParticipacionDesafioService {
     /**
      * Recalcula la racha actual del participante según la frecuencia del desafío.
      * Adapta el algoritmo de {@link HabitoService} a la pareja (usuario, desafio).
+     *
+     * @param participacion participación cuyas rachas se actualizan
      */
     private void recalcularRacha(ParticipacionDesafio participacion) {
         Desafio desafio = participacion.getDesafio();
@@ -299,6 +347,8 @@ public class ParticipacionDesafioService {
      * en orden cronológico y aplicando la fórmula de {@link Scoring} con bonus de racha.
      * Una racha rota reinicia el multiplicador.
      * También actualiza {@code puntosGanados} en cada {@link RegistroDesafio} para alimentar la gráfica.
+     *
+     * @param participacion participación cuyos puntos se recalculan
      */
     private void recalcularPuntos(ParticipacionDesafio participacion) {
         Desafio desafio = participacion.getDesafio();
@@ -344,6 +394,10 @@ public class ParticipacionDesafioService {
     /**
      * Devuelve el siguiente día válido tras {@code dia}: el día siguiente si la frecuencia es DIARIA,
      * o el siguiente día de la semana programado si la frecuencia es PERSONALIZADA.
+     *
+     * @param dia día de referencia
+     * @param dowProgramados días programados (null para frecuencia DIARIA)
+     * @return siguiente día válido
      */
     private LocalDate siguienteDiaProgramado(LocalDate dia, Set<DayOfWeek> dowProgramados) {
         LocalDate siguiente = dia.plusDays(1);
@@ -411,6 +465,10 @@ public class ParticipacionDesafioService {
      * Convierte la entidad {@link ParticipacionDesafio} al DTO de respuesta.
      * Incluye nombre y foto del usuario para evitar llamadas adicionales al endpoint de perfil.
      * Calcula completadoHoy consultando el registro del día actual.
+     *
+     * @param p entidad origen
+     * @param posicion posición en el ranking (1-indexed) o null si no aplica
+     * @return DTO con métricas y datos del usuario rellenados
      */
     public ParticipacionDesafioDTO toDTO(ParticipacionDesafio p, Integer posicion) {
         ParticipacionDesafioDTO dto = new ParticipacionDesafioDTO();
@@ -445,6 +503,9 @@ public class ParticipacionDesafioService {
      * Usa los registros reales (no {@code rachaActual} de la entidad, que puede estar
      * desincronizada con datos seed o INSERT manuales). Si hoy ya está marcado, devuelve
      * la racha actual para que la UI no engañe ofreciendo más puntos.
+     *
+     * @param p participación a evaluar
+     * @return racha proyectada si se completase hoy
      */
     private int rachaSiCompletaHoy(ParticipacionDesafio p) {
         Desafio desafio = p.getDesafio();

@@ -37,6 +37,9 @@ public class JwtService {
 
     /**
      * Extrae el email del usuario (campo {@code sub}) del token.
+     *
+     * @param token JWT firmado
+     * @return email del usuario contenido en el token
      */
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
@@ -44,6 +47,9 @@ public class JwtService {
 
     /**
      * Extrae el claim {@code tv} (tokenVersion) del token.
+     *
+     * @param token JWT firmado
+     * @return versión del token, o null si no contiene el claim
      */
     public Integer extractTokenVersion(String token) {
         return extractClaim(token, claims -> claims.get("tv", Integer.class));
@@ -51,6 +57,11 @@ public class JwtService {
 
     /**
      * Extrae cualquier claim del token aplicando la función indicada.
+     *
+     * @param <T> tipo de dato del claim
+     * @param token JWT firmado
+     * @param claimsResolver función que extrae el claim de los {@link Claims}
+     * @return valor del claim
      */
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
         final Claims claims = extractAllClaims(token);
@@ -60,6 +71,9 @@ public class JwtService {
     /**
      * Genera un token JWT a partir de un objeto {@link Authentication}.
      * Incluye el claim {@code tv} si el principal es un {@link AuthUserDetails}.
+     *
+     * @param authentication contexto de seguridad con el principal autenticado
+     * @return JWT firmado listo para enviar al cliente
      */
     public String generateToken(Authentication authentication) {
         Map<String, Object> claims = new HashMap<>();
@@ -72,6 +86,9 @@ public class JwtService {
     /**
      * Genera un token JWT a partir de un {@link UserDetails}.
      * Sobrecarga usada cuando no hay contexto de autenticación disponible.
+     *
+     * @param userDetails detalles del usuario para construir el token
+     * @return JWT firmado
      */
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
@@ -85,6 +102,10 @@ public class JwtService {
      * Valida el token comprobando tres cosas:
      * que el email coincida con el usuario, que no haya expirado,
      * y que el {@code tv} del token coincida con el tokenVersion actual del usuario.
+     *
+     * @param token JWT a validar
+     * @param userDetails detalles del usuario actual
+     * @return true si el token es válido
      */
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUsername(token);
@@ -102,6 +123,9 @@ public class JwtService {
 
     /**
      * Comprueba si el token ha superado su fecha de expiración.
+     *
+     * @param token JWT a comprobar
+     * @return true si el token ha expirado
      */
     private boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
@@ -109,6 +133,9 @@ public class JwtService {
 
     /**
      * Extrae la fecha de expiración del token.
+     *
+     * @param token JWT firmado
+     * @return fecha de expiración del token
      */
     private Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
@@ -116,6 +143,11 @@ public class JwtService {
 
     /**
      * Construye y firma el token JWT con los claims, subject, fechas y clave HMAC.
+     *
+     * @param extraClaims claims adicionales a incluir (ej: tv)
+     * @param username valor del subject (email del usuario)
+     * @param expiration milisegundos hasta la expiración
+     * @return JWT firmado
      */
     private String buildToken(Map<String, Object> extraClaims, String username, long expiration) {
         return Jwts.builder()
@@ -129,6 +161,9 @@ public class JwtService {
 
     /**
      * Parsea y devuelve todos los claims del token verificando la firma.
+     *
+     * @param token JWT firmado
+     * @return claims contenidos en el token
      */
     private Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
@@ -140,6 +175,8 @@ public class JwtService {
 
     /**
      * Decodifica el secreto en Base64 y devuelve la clave HMAC para firmar/verificar tokens.
+     *
+     * @return clave HMAC para firmar y verificar JWTs
      */
     private Key getSignInKey() {
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);

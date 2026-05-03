@@ -4,15 +4,15 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.util.Date;
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 /**
  * DTO de respuesta con los datos públicos de un usuario.
  * Se devuelve en los endpoints de perfil y búsqueda.
  * No incluye password, tokenVersion ni activo: son detalles internos
  * que el cliente no necesita conocer.
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class UsuarioDTO {
 
     /** Identificador único del usuario en la base de datos. */

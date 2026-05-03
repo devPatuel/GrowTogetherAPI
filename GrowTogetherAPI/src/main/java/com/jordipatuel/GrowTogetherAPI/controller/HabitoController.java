@@ -33,6 +33,12 @@ import java.util.List;
 public class HabitoController {
     private final HabitoService habitoService;
     private final RegistroHabitoService registroHabitoService;
+    /**
+     * Inyecta los servicios necesarios para la gestión de hábitos y su historial.
+     *
+     * @param habitoService servicio principal de hábitos
+     * @param registroHabitoService servicio de registros y rellenos automáticos
+     */
     @Autowired
     public HabitoController(HabitoService habitoService, RegistroHabitoService registroHabitoService) {
         this.habitoService = habitoService;
@@ -42,6 +48,10 @@ public class HabitoController {
     /**
      * Crea un nuevo hábito para el usuario autenticado.
      * POST /api/v1/habitos
+     *
+     * @param dto datos del nuevo hábito
+     * @param authentication contexto de seguridad para extraer el propietario
+     * @return el hábito creado con código 201
      */
     @PreAuthorize("isAuthenticated()")
     @PostMapping
@@ -56,6 +66,10 @@ public class HabitoController {
      * Lista los hábitos activos del usuario. Acepta fecha opcional para saber
      * si el hábito estaba completado en un día concreto (por defecto hoy).
      * GET /api/v1/habitos/usuario/{usuarioId}
+     *
+     * @param usuarioId ID del usuario propietario
+     * @param fecha fecha de referencia para calcular completadoHoy (opcional, por defecto hoy)
+     * @return lista de hábitos activos del usuario
      */
     @PreAuthorize("isAuthenticated() and #usuarioId == authentication.principal.id")
     @GetMapping("/usuario/{usuarioId}")
@@ -67,6 +81,11 @@ public class HabitoController {
     /**
      * Edita los campos del hábito. Solo accesible por el propietario.
      * PUT /api/v1/habitos/{id}
+     *
+     * @param id ID del hábito a editar
+     * @param dto datos nuevos del hábito
+     * @param authentication contexto de seguridad para extraer el propietario
+     * @return el hábito actualizado
      */
     @PreAuthorize("@habitoService.isOwner(#id, authentication.principal.id)")
     @PutMapping("/{id}")
@@ -80,6 +99,9 @@ public class HabitoController {
     /**
      * Elimina (soft delete) el hábito. Solo accesible por el propietario.
      * DELETE /api/v1/habitos/{id}
+     *
+     * @param id ID del hábito a eliminar
+     * @return 204 No Content
      */
     @PreAuthorize("@habitoService.isOwner(#id, authentication.principal.id)")
     @DeleteMapping("/{id}")
@@ -91,6 +113,11 @@ public class HabitoController {
      * Marca el hábito como completado en la fecha indicada (por defecto hoy).
      * Solo accesible por el propietario.
      * POST /api/v1/habitos/{id}/completar
+     *
+     * @param id ID del hábito a completar
+     * @param fecha fecha del registro (opcional, por defecto hoy)
+     * @param authentication contexto de seguridad para extraer el propietario
+     * @return el hábito con racha y métricas actualizadas
      */
     @PreAuthorize("@habitoService.isOwner(#id, authentication.principal.id)")
     @PostMapping("/{id}/completar")
@@ -105,6 +132,11 @@ public class HabitoController {
      * Revierte el hábito a PENDIENTE en la fecha indicada (por defecto hoy).
      * Solo accesible por el propietario.
      * POST /api/v1/habitos/{id}/descompletar
+     *
+     * @param id ID del hábito a descompletar
+     * @param fecha fecha del registro a revertir (opcional, por defecto hoy)
+     * @param authentication contexto de seguridad para extraer el propietario
+     * @return el hábito con racha y métricas recalculadas
      */
     @PreAuthorize("@habitoService.isOwner(#id, authentication.principal.id)")
     @PostMapping("/{id}/descompletar")
@@ -119,6 +151,10 @@ public class HabitoController {
      * Devuelve el progreso actual del hábito (rachaActual y rachaMaxima).
      * Solo accesible por el propietario.
      * GET /api/v1/habitos/{id}/progreso
+     *
+     * @param id ID del hábito
+     * @param authentication contexto de seguridad para extraer el propietario
+     * @return el hábito con las métricas de progreso
      */
     @PreAuthorize("@habitoService.isOwner(#id, authentication.principal.id)")
     @GetMapping("/{id}/progreso")
@@ -133,6 +169,12 @@ public class HabitoController {
      * Antes de devolver los datos, rellena los días sin registro como NO_COMPLETADO (lazy fill).
      * Solo accesible por el propietario.
      * GET /api/v1/habitos/{id}/historial
+     *
+     * @param id ID del hábito
+     * @param fechaInicio fecha inicial del rango (opcional)
+     * @param fechaFin fecha final del rango (opcional)
+     * @param authentication contexto de seguridad para extraer el propietario
+     * @return lista de registros del hábito en el rango
      */
     @PreAuthorize("@habitoService.isOwner(#id, authentication.principal.id)")
     @GetMapping("/{id}/historial")

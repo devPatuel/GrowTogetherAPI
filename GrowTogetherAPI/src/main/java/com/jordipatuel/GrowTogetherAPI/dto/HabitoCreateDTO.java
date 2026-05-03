@@ -5,15 +5,15 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.util.Set;
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 /**
  * DTO para la creación de un nuevo hábito.
  * Se recibe en el endpoint POST /api/v1/habitos.
  * Los campos frecuencia, diasSemana, tipo e icono son opcionales:
  * el servicio asigna DIARIO y POSITIVO por defecto si no se informan.
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class HabitoCreateDTO {
 
     /** Nombre del hábito. Entre 2 y 100 caracteres. */

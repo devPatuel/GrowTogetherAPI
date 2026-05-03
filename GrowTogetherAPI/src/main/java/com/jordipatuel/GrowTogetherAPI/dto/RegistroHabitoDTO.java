@@ -4,13 +4,13 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDate;
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 /**
  * DTO de respuesta completa de un registro de hábito.
  * Incluye todos los campos del registro. Usado en consultas internas del servicio.
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class RegistroHabitoDTO {
 
     /** Identificador único del registro. */

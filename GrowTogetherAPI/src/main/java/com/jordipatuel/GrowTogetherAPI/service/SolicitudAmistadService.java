@@ -29,6 +29,13 @@ public class SolicitudAmistadService {
     private final UsuarioRepository usuarioRepository;
     private final UsuarioService usuarioService;
 
+    /**
+     * Inyecta los repositorios y el servicio de usuarios.
+     *
+     * @param solicitudRepository repositorio de solicitudes de amistad
+     * @param usuarioRepository repositorio de usuarios
+     * @param usuarioService servicio de usuarios para crear la relación al aceptar
+     */
     @Autowired
     public SolicitudAmistadService(
             SolicitudAmistadRepository solicitudRepository,
@@ -43,6 +50,10 @@ public class SolicitudAmistadService {
      * Envía una solicitud de amistad del remitente al destinatario.
      * Valida: no enviarse a sí mismo, no duplicar pendiente en cualquier dirección,
      * no enviar si ya son amigos.
+     *
+     * @param remitenteId ID del usuario remitente
+     * @param destinatarioId ID del usuario destinatario
+     * @return la solicitud creada
      */
     @Transactional
     public SolicitudAmistadDTO enviarSolicitud(Long remitenteId, Long destinatarioId) {
@@ -75,6 +86,10 @@ public class SolicitudAmistadService {
     /**
      * Acepta una solicitud pendiente. Solo el destinatario puede aceptarla.
      * Crea la relación de amistad bidireccional vía {@link UsuarioService#agregarAmigo}.
+     *
+     * @param solicitudId ID de la solicitud a aceptar
+     * @param userActualId ID del usuario que ejecuta la acción (debe ser el destinatario)
+     * @return la solicitud actualizada en estado ACEPTADA
      */
     @Transactional
     public SolicitudAmistadDTO aceptar(Long solicitudId, Long userActualId) {
@@ -94,6 +109,10 @@ public class SolicitudAmistadService {
 
     /**
      * Rechaza una solicitud pendiente. Solo el destinatario puede rechazarla.
+     *
+     * @param solicitudId ID de la solicitud a rechazar
+     * @param userActualId ID del usuario que ejecuta la acción (debe ser el destinatario)
+     * @return la solicitud actualizada en estado RECHAZADA
      */
     @Transactional
     public SolicitudAmistadDTO rechazar(Long solicitudId, Long userActualId) {
@@ -112,6 +131,9 @@ public class SolicitudAmistadService {
     /**
      * Cancela una solicitud que aún está pendiente. Solo el remitente puede cancelarla.
      * Se elimina la fila para permitir volver a enviarla más adelante.
+     *
+     * @param solicitudId ID de la solicitud a cancelar
+     * @param userActualId ID del usuario que ejecuta la acción (debe ser el remitente)
      */
     @Transactional
     public void cancelar(Long solicitudId, Long userActualId) {
@@ -125,14 +147,24 @@ public class SolicitudAmistadService {
         solicitudRepository.delete(solicitud);
     }
 
-    /** Devuelve las solicitudes pendientes recibidas por el usuario. */
+    /**
+     * Devuelve las solicitudes pendientes recibidas por el usuario.
+     *
+     * @param userId ID del usuario destinatario
+     * @return lista de solicitudes pendientes recibidas
+     */
     public List<SolicitudAmistadDTO> listarRecibidasPendientes(Long userId) {
         return solicitudRepository.findByDestinatarioIdAndEstado(userId, EstadoSolicitud.PENDIENTE).stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
     }
 
-    /** Devuelve las solicitudes pendientes enviadas por el usuario. */
+    /**
+     * Devuelve las solicitudes pendientes enviadas por el usuario.
+     *
+     * @param userId ID del usuario remitente
+     * @return lista de solicitudes pendientes enviadas
+     */
     public List<SolicitudAmistadDTO> listarEnviadasPendientes(Long userId) {
         return solicitudRepository.findByRemitenteIdAndEstado(userId, EstadoSolicitud.PENDIENTE).stream()
                 .map(this::toDTO)
@@ -152,6 +184,9 @@ public class SolicitudAmistadService {
     /**
      * Convierte la entidad {@link SolicitudAmistad} al DTO incluyendo datos visuales
      * (nombre y foto) de remitente y destinatario para evitar llamadas adicionales.
+     *
+     * @param s entidad origen
+     * @return DTO con datos de remitente y destinatario embebidos
      */
     private SolicitudAmistadDTO toDTO(SolicitudAmistad s) {
         Usuario r = s.getRemitente();

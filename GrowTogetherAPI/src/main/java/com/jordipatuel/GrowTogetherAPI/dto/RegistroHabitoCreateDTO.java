@@ -5,15 +5,15 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDate;
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 /**
  * DTO para crear un registro diario del estado de un hábito.
  * Usado internamente por el servicio al completar o descompletar un hábito.
  * El cliente no envía este DTO directamente: usuarioId y habitoId
  * se extraen del token JWT y de la URL del endpoint.
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class RegistroHabitoCreateDTO {
 
     /** Fecha del registro. Corresponde al día en que se completa o descompleta el hábito. */

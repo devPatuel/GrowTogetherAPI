@@ -24,6 +24,11 @@ import java.util.List;
 @RequestMapping(Config.API_URL + "/notificaciones")
 public class NotificacionController {
     private final NotificacionService notificacionService;
+    /**
+     * Inyecta el servicio de notificaciones.
+     *
+     * @param notificacionService servicio de gestión de notificaciones
+     */
     @Autowired
     public NotificacionController(NotificacionService notificacionService) {
         this.notificacionService = notificacionService;
@@ -33,6 +38,9 @@ public class NotificacionController {
      * Crea una notificación para el hábito indicado en el DTO.
      * Verifica que el usuario autenticado es propietario del hábito.
      * POST /api/v1/notificaciones
+     *
+     * @param dto datos de la nueva notificación
+     * @return la notificación creada con código 201
      */
     @PreAuthorize("@habitoService.isOwner(#dto.habitoId, authentication.principal.id)")
     @PostMapping
@@ -44,6 +52,9 @@ public class NotificacionController {
      * Lista las notificaciones de un hábito concreto.
      * Verifica que el usuario autenticado es propietario del hábito.
      * GET /api/v1/notificaciones/habito/{habitoId}
+     *
+     * @param habitoId ID del hábito
+     * @return lista de notificaciones asociadas al hábito
      */
     @PreAuthorize("@habitoService.isOwner(#habitoId, authentication.principal.id)")
     @GetMapping("/habito/{habitoId}")
@@ -53,6 +64,10 @@ public class NotificacionController {
     /**
      * Actualiza una notificación. Verifica que el usuario es propietario de la notificación.
      * PUT /api/v1/notificaciones/{id}
+     *
+     * @param id ID de la notificación a actualizar
+     * @param dto datos nuevos de la notificación
+     * @return la notificación actualizada
      */
     @PreAuthorize("@notificacionService.isOwner(#id, authentication.principal.id)")
     @PutMapping("/{id}")
@@ -64,6 +79,9 @@ public class NotificacionController {
     /**
      * Elimina una notificación. Verifica que el usuario es propietario de la notificación.
      * DELETE /api/v1/notificaciones/{id}
+     *
+     * @param id ID de la notificación a eliminar
+     * @return 204 No Content
      */
     @PreAuthorize("@notificacionService.isOwner(#id, authentication.principal.id)")
     @DeleteMapping("/{id}")

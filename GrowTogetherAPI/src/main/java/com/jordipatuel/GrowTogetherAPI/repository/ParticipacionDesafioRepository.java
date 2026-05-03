@@ -11,15 +11,36 @@ import java.util.Optional;
 @Repository
 public interface ParticipacionDesafioRepository extends JpaRepository<ParticipacionDesafio, Long> {
 
-    /** Devuelve todas las participaciones de un desafío concreto. */
+    /**
+     * Devuelve todas las participaciones de un desafío concreto.
+     *
+     * @param desafioId ID del desafío
+     * @return lista de participaciones del desafío
+     */
     List<ParticipacionDesafio> findByDesafioId(Integer desafioId);
 
-    /** Devuelve todos los desafíos en los que participa un usuario. */
+    /**
+     * Devuelve todos los desafíos en los que participa un usuario.
+     *
+     * @param usuarioId ID del usuario
+     * @return lista de participaciones del usuario
+     */
     List<ParticipacionDesafio> findByUsuarioId(Long usuarioId);
 
-    /** Busca la participación de un usuario en un desafío concreto. Usado para evitar inscripciones duplicadas. */
+    /**
+     * Busca la participación de un usuario en un desafío concreto. Usado para evitar inscripciones duplicadas.
+     *
+     * @param desafioId ID del desafío
+     * @param usuarioId ID del usuario
+     * @return participación si existe
+     */
     Optional<ParticipacionDesafio> findByDesafioIdAndUsuarioId(Integer desafioId, Long usuarioId);
 
-    /** Devuelve las participaciones de un desafío ordenadas por puntos descendente. Usado para el ranking. */
+    /**
+     * Devuelve las participaciones de un desafío ordenadas por puntos descendente. Usado para el ranking.
+     *
+     * @param desafioId ID del desafío
+     * @return participaciones ordenadas por puntos descendente
+     */
     List<ParticipacionDesafio> findByDesafioIdOrderByPuntosGanadosEnDesafioDesc(Integer desafioId);
 }

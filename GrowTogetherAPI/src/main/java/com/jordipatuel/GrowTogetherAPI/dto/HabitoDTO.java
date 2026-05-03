@@ -4,15 +4,15 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.util.Set;
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 /**
  * DTO de respuesta con los datos de un hábito.
  * Se devuelve en los endpoints de listado y detalle de hábitos.
  * Incluye campos calculados en el servicio que el cliente usa directamente
  * para pintar el estado del hábito sin necesidad de cálculos en el cliente.
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class HabitoDTO {
 
     /** Identificador único del hábito. */

@@ -75,6 +75,18 @@ El fichero `data.sql` contiene dos usuarios de prueba y hábitos de ejemplo. Par
 
 ## Arrancar el proyecto
 
+### Opción A — Docker Compose (recomendado para validar la topología completa)
+
+Desde la raíz del repo padre `GrowTogether/`:
+
+```bash
+docker compose -f docker-compose.local.yml up -d --build
+```
+
+Levanta API + Postgres + nginx en una red interna. La API queda en `http://localhost:8081` y todos los healthchecks definidos. Es la misma topología que se despliega en EC2.
+
+### Opción B — Gradle directo
+
 ```bash
 # Con perfil dev (credenciales en application-dev.properties)
 SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun
@@ -108,6 +120,8 @@ SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun --no-daemon > /tmp/api_log.txt 2>&1
 
 ## Documentación de la API
 
+### Swagger UI (interactiva)
+
 Con la aplicación en marcha, la documentación Swagger está disponible en:
 
 ```
@@ -119,6 +133,18 @@ Para probar endpoints protegidos:
 2. Copiar el `token` de la respuesta
 3. En Swagger: botón **Authorize** → `Bearer <token>`
 
+### Javadoc (referencia HTML estática)
+
+Las clases (controladores, servicios, modelos, DTOs) están comentadas con
+Javadoc. Para generar la documentación:
+
+```bash
+./gradlew javadoc
+```
+
+Salida en `build/docs/javadoc/index.html`. Por defecto está bajo `build/`,
+ignorada por git.
+
 ---
 
 ## Estructura del proyecto
@@ -126,10 +152,10 @@ Para probar endpoints protegidos:
 ```
 src/main/java/com/jordipatuel/GrowTogetherAPI/
 ├── controller/     # 6 controladores REST (Auth, Usuario, Habito, Desafio, Notificacion, Admin)
-├── service/        # 10 servicios con la lógica de negocio
-├── repository/     # 8 repositorios Spring Data JPA
-├── model/          # 8 entidades JPA + enums (DiaSemana, EstadoHabito, Frecuencia...)
-├── dto/            # DTOs de entrada (CreateDTO) y salida (ResponseDTO)
+├── service/        # 11 servicios con la lógica de negocio
+├── repository/     # 10 repositorios Spring Data JPA
+├── model/          # 10 entidades JPA + enums (DiaSemana, EstadoHabito, Frecuencia, Roles...)
+├── dto/            # DTOs de entrada (CreateDTO) y salida (ResponseDTO, AdminDTO)
 ├── config/         # SecurityConfig, JwtFilter, RateLimitFilter, PasswordEncoderConfig
 └── exception/      # GlobalExceptionHandler + excepciones tipadas
 ```
@@ -158,8 +184,24 @@ src/main/java/com/jordipatuel/GrowTogetherAPI/
 ### Admin (rol ADMIN)
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| GET | `/api/v1/admin/metricas` | Métricas globales de la plataforma |
-| GET | `/api/v1/admin/audit` | Últimos 100 registros de auditoría |
+| GET | `/api/v1/admin/metricas` | Snapshot global: usuarios activos, totales, hábitos creados, completados hoy, desafíos activos, usuario más veterano y nuevos por mes (6 meses) |
+| GET | `/api/v1/admin/usuarios` | Lista todos los usuarios para el panel (UsuarioAdminDTO con estado de bloqueo). Activos primero, alfabético |
+| POST | `/api/v1/admin/usuarios` | Crea un nuevo administrador |
+| PUT | `/api/v1/admin/usuarios/{id}/resetear-contrasena` | Reset sin verificar la actual |
+| PUT | `/api/v1/admin/usuarios/{id}/desbloquear` | Reactiva un usuario bloqueado y limpia motivo/fecha |
+| DELETE | `/api/v1/admin/usuarios/{id}` | Bloqueo (soft delete) con motivo obligatorio en el body. Se rechaza si el admin intenta bloquearse a sí mismo |
+| GET | `/api/v1/admin/recursos` | Lista todos los consejos (incluye inactivos y futuros) |
+| POST | `/api/v1/admin/recursos` | Crea un consejo. La fecha es opcional pero única si se asigna |
+| PUT | `/api/v1/admin/recursos/{id}` | Edita un consejo |
+| DELETE | `/api/v1/admin/recursos/{id}` | Elimina físicamente un consejo |
+| GET | `/api/v1/admin/audit` | Últimos 100 registros de auditoría globales |
+| GET | `/api/v1/admin/audit/usuario/{id}` | Audit log filtrado por admin |
+
+### Consejos del día (cualquier rol autenticado)
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/v1/usuarios/consejos` | Lista de consejos activos publicados hasta hoy |
+| GET | `/api/v1/usuarios/consejo/hoy` | Consejo asignado a la fecha de hoy. 204 si no hay |
 
 Ver el Swagger para la lista completa de endpoints con parámetros y respuestas.
 
@@ -171,13 +213,15 @@ Ver el Swagger para la lista completa de endpoints con parámetros y respuestas.
 - **Historial NO_COMPLETADO**: un job nocturno (`HabitoScheduledService`, 00:01) marca como `NO_COMPLETADO` todos los registros `PENDIENTE` del día anterior. También se aplica de forma lazy al consultar el historial.
 - **Puntos**: completar un hábito suma 10 puntos al usuario (idempotente — no suma doble si ya estaba completado). Desmarcar resta 10 puntos.
 - **Revocación de tokens**: el campo `tokenVersion` en `Usuario` se incrementa al cambiar contraseña o desactivar cuenta, invalidando todos los JWT anteriores del usuario.
+- **Bloqueo con motivo**: el bloqueo de un usuario (`DELETE /admin/usuarios/{id}`) exige `motivo` en el body. Se guarda en `motivo_bloqueo` y `fecha_bloqueo` y queda en el audit log. Un admin no puede bloquearse a sí mismo (validación en controller).
+- **Consejos diarios**: los consejos pueden no tener fecha asignada (consejos "de reserva"). Cuando se asigna, la fecha es única (constraint UNIQUE + validación en `ConsejoService`). El endpoint `GET /usuarios/consejo/hoy` devuelve el consejo activo para el día actual o 204 si no hay.
 
 ---
 
 ## Seguridad
 
 - JWT stateless con expiración de 24h. Secret obligatorio via variable de entorno.
-- BCrypt para contraseñas con política de complejidad (mínimo 8 caracteres, mayúscula, minúscula y dígito).
+- BCrypt para contraseñas con política de complejidad (mínimo 8 caracteres, mayúscula, minúscula, dígito y carácter especial).
 - Rate limiting: 10 requests/minuto por IP en los endpoints de login y registro.
 - Control de acceso por rol (`STANDARD` / `ADMIN`) y por propietario (`@PreAuthorize` con SpEL).
 - Soft delete en usuarios, hábitos y desafíos — los datos nunca se borran físicamente.

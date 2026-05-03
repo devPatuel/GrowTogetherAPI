@@ -17,21 +17,40 @@ import java.util.Collection;
  */
 public class AuthUserDetails extends User {
 
+    /** ID del usuario en base de datos. */
     private final Long id;
+    /** Versión del token JWT activo cuando se emitió este UserDetails. */
     private final int tokenVersion;
 
+    /**
+     * Construye el UserDetails enriquecido a partir de los datos del usuario.
+     *
+     * @param id ID del usuario en base de datos
+     * @param username email usado como nombre de usuario
+     * @param password contraseña cifrada con BCrypt
+     * @param authorities roles concedidos al usuario
+     * @param tokenVersion versión actual del token JWT del usuario
+     */
     public AuthUserDetails(Long id, String username, String password, Collection<? extends GrantedAuthority> authorities, int tokenVersion) {
         super(username, password, authorities);
         this.id = id;
         this.tokenVersion = tokenVersion;
     }
 
-    /** ID del usuario en base de datos. */
+    /**
+     * Devuelve el ID del usuario en base de datos.
+     *
+     * @return ID numérico del usuario
+     */
     public Long getId() {
         return id;
     }
 
-    /** Versión del token JWT para detectar tokens revocados. */
+    /**
+     * Devuelve la versión del token JWT registrada al autenticar.
+     *
+     * @return versión del token (entero monotónico creciente)
+     */
     public int getTokenVersion() {
         return tokenVersion;
     }

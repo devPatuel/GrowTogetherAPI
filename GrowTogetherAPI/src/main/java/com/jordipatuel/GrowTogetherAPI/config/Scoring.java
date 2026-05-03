@@ -22,7 +22,10 @@ public final class Scoring {
 
     /**
      * Calcula el multiplicador de puntos según la racha de días consecutivos.
-     * Para racha=1 devuelve 1.0; para racha=10 devuelve 1.9; para racha>=21 devuelve 3.0 (tope).
+     * Para racha=1 devuelve 1.0; para racha=10 devuelve 1.9; para racha&gt;=21 devuelve 3.0 (tope).
+     *
+     * @param racha número de días consecutivos completados (1-indexed)
+     * @return multiplicador a aplicar a {@link #PUNTOS_BASE}
      */
     public static double multiplicador(int racha) {
         if (racha <= 0) return 0;
@@ -32,6 +35,9 @@ public final class Scoring {
 
     /**
      * Calcula los puntos que otorga un día completado dado el valor de racha resultante.
+     *
+     * @param racha número de días consecutivos completados (1-indexed)
+     * @return puntos otorgados ese día con el bonus aplicado
      */
     public static int puntosDia(int racha) {
         if (racha <= 0) return 0;

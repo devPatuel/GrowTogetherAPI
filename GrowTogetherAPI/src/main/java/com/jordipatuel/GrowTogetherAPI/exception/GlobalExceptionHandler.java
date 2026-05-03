@@ -23,7 +23,12 @@ import java.util.Map;
 public class GlobalExceptionHandler {
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    /** Errores de validación de @Valid en el body (campo → mensaje). Devuelve 400. */
+    /**
+     * Errores de validación de @Valid en el body (campo → mensaje). Devuelve 400.
+     *
+     * @param ex excepción capturada con los errores de campo
+     * @return mapa de campo a mensaje de error
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidationErrors(MethodArgumentNotValidException ex) {
         Map<String, String> mapaErrores = new HashMap<>();
@@ -32,7 +37,12 @@ public class GlobalExceptionHandler {
         });
         return ResponseEntity.badRequest().body(mapaErrores);
     }
-    /** Violaciones de restricciones de BD (unique, not null). Devuelve 409. */
+    /**
+     * Violaciones de restricciones de BD (unique, not null). Devuelve 409.
+     *
+     * @param ex excepción de integridad de datos lanzada por JPA
+     * @return DTO con código 409 y mensaje genérico
+     */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponseDTO> handleDataIntegrity(DataIntegrityViolationException ex) {
         String message = "Error de integridad: Ya existe un registro con esos datos o faltan campos obligatorios";
@@ -44,7 +54,12 @@ public class GlobalExceptionHandler {
         );
         return new ResponseEntity<>(response, HttpStatus.CONFLICT);
     }
-    /** Excepciones con código HTTP explícito lanzadas con ResponseStatusException. */
+    /**
+     * Excepciones con código HTTP explícito lanzadas con ResponseStatusException.
+     *
+     * @param ex excepción con el statusCode y reason a propagar al cliente
+     * @return DTO con el código y mensaje recibidos
+     */
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ErrorResponseDTO> handleResponseStatusException(ResponseStatusException ex) {
         ErrorResponseDTO response = new ErrorResponseDTO(
@@ -55,7 +70,12 @@ public class GlobalExceptionHandler {
         );
         return new ResponseEntity<>(response, ex.getStatusCode());
     }
-    /** Reglas de negocio incumplidas lanzadas con {@link BadRequestException}. Devuelve 400. */
+    /**
+     * Reglas de negocio incumplidas lanzadas con {@link BadRequestException}. Devuelve 400.
+     *
+     * @param ex excepción de negocio con el mensaje a devolver al cliente
+     * @return DTO con código 400 y el mensaje de la excepción
+     */
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ErrorResponseDTO> handleBadRequest(BadRequestException ex) {
         ErrorResponseDTO response = new ErrorResponseDTO(
@@ -66,7 +86,12 @@ public class GlobalExceptionHandler {
         );
         return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
     }
-    /** Recursos no encontrados lanzados con {@link ResourceNotFoundException}. Devuelve 404. */
+    /**
+     * Recursos no encontrados lanzados con {@link ResourceNotFoundException}. Devuelve 404.
+     *
+     * @param ex excepción con el mensaje del recurso no encontrado
+     * @return DTO con código 404 y el mensaje de la excepción
+     */
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponseDTO> handleNotFound(ResourceNotFoundException ex) {
         ErrorResponseDTO response = new ErrorResponseDTO(
@@ -77,7 +102,12 @@ public class GlobalExceptionHandler {
         );
         return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
     }
-    /** Errores de validación de @Validated en parámetros de query/path (campo → mensaje). Devuelve 400. */
+    /**
+     * Errores de validación de @Validated en parámetros de query/path (campo → mensaje). Devuelve 400.
+     *
+     * @param ex excepción con la lista de violaciones de constraints
+     * @return mapa de campo a mensaje de error
+     */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<Map<String, String>> handleConstraintViolation(ConstraintViolationException ex) {
         Map<String, String> mapaErrores = new HashMap<>();
@@ -87,7 +117,12 @@ public class GlobalExceptionHandler {
         });
         return ResponseEntity.badRequest().body(mapaErrores);
     }
-    /** Valores de enum inválidos u otros argumentos incorrectos. Devuelve 400. */
+    /**
+     * Valores de enum inválidos u otros argumentos incorrectos. Devuelve 400.
+     *
+     * @param ex excepción de argumento ilegal con el detalle del error
+     * @return DTO con código 400 y mensaje "Valor no válido"
+     */
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponseDTO> handleIllegalArgument(IllegalArgumentException ex) {
         ErrorResponseDTO response = new ErrorResponseDTO(
@@ -101,6 +136,9 @@ public class GlobalExceptionHandler {
     /**
      * Captura cualquier RuntimeException no controlada. Logea el stack trace en servidor
      * y devuelve un mensaje genérico al cliente para no filtrar información interna. Devuelve 500.
+     *
+     * @param ex excepción no controlada que ha llegado al handler
+     * @return DTO con código 500 y mensaje genérico
      */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponseDTO> handleRuntime(RuntimeException ex) {

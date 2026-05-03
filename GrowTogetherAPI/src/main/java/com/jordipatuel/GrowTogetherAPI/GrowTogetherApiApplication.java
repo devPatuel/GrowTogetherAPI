@@ -12,6 +12,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @EnableScheduling
 public class GrowTogetherApiApplication {
+	/**
+	 * Arranca la aplicación Spring Boot.
+	 *
+	 * @param args argumentos de línea de comandos pasados al arrancar
+	 */
 	public static void main(String[] args) {
 		SpringApplication.run(GrowTogetherApiApplication.class, args);
 	}

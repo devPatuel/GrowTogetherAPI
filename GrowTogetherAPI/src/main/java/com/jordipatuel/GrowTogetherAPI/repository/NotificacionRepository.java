@@ -10,9 +10,19 @@ import java.util.List;
 @Repository
 public interface NotificacionRepository extends JpaRepository<Notificacion, Integer> {
 
-    /** Devuelve todas las notificaciones de un hábito concreto. */
+    /**
+     * Devuelve todas las notificaciones de un hábito concreto.
+     *
+     * @param habitoId ID del hábito
+     * @return lista de notificaciones asociadas al hábito
+     */
     List<Notificacion> findByHabitoId(Integer habitoId);
 
-    /** Devuelve todas las notificaciones de los hábitos de un usuario navegando por la relación notificacion → habito → usuario. */
+    /**
+     * Devuelve todas las notificaciones de los hábitos de un usuario navegando por la relación notificacion → habito → usuario.
+     *
+     * @param usuarioId ID del usuario propietario de los hábitos
+     * @return lista de notificaciones de todos los hábitos del usuario
+     */
     List<Notificacion> findByHabitoUsuarioId(Long usuarioId);
 }

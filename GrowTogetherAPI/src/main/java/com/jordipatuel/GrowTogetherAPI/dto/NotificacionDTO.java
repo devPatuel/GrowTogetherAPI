@@ -3,13 +3,13 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.sql.Time;
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 /**
  * DTO de respuesta con los datos de una notificación.
  * Se devuelve en los endpoints de listado y detalle de notificaciones.
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class NotificacionDTO {
 
     /** Identificador único de la notificación. */

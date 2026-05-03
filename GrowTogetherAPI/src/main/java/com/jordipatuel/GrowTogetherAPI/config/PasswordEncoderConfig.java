@@ -16,7 +16,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @Configuration
 public class PasswordEncoderConfig {
 
-    /** Expone BCrypt como bean de codificación de contraseñas. */
+    /**
+     * Expone BCrypt como bean de codificación de contraseñas.
+     *
+     * @return codificador BCrypt
+     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();

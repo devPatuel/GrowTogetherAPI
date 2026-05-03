@@ -5,14 +5,14 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.sql.Time;
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 /**
  * DTO para la creación de una notificación de recordatorio.
  * Se recibe en el endpoint POST /api/v1/notificaciones.
  * Cada notificación debe estar asociada a un hábito existente del usuario.
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class NotificacionCreateDTO {
 
     /** Mensaje del recordatorio que verá el usuario. */

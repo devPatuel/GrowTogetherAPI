@@ -11,12 +11,26 @@ import java.util.List;
 @Repository
 public interface HabitoRepository extends JpaRepository<Habito, Integer> {
 
-    /** Devuelve todos los hábitos de un usuario (activos e inactivos). */
+    /**
+     * Devuelve todos los hábitos de un usuario (activos e inactivos).
+     *
+     * @param usuarioId ID del usuario propietario
+     * @return lista completa de hábitos del usuario
+     */
     List<Habito> findByUsuarioId(Long usuarioId);
 
-    /** Devuelve solo los hábitos activos de un usuario. Usado en el listado normal. */
+    /**
+     * Devuelve solo los hábitos activos de un usuario. Usado en el listado normal.
+     *
+     * @param usuarioId ID del usuario propietario
+     * @return lista de hábitos activos del usuario
+     */
     List<Habito> findByUsuarioIdAndActivoTrue(Long usuarioId);
 
-    /** Devuelve todos los hábitos activos de la plataforma. Usado por la tarea programada nocturna. */
+    /**
+     * Devuelve todos los hábitos activos de la plataforma. Usado por la tarea programada nocturna.
+     *
+     * @return lista global de hábitos activos
+     */
     List<Habito> findByActivoTrue();
 }

@@ -22,6 +22,12 @@ import java.util.stream.Collectors;
 public class NotificacionService {
     private final NotificacionRepository notificacionRepository;
     private final HabitoRepository habitoRepository;
+    /**
+     * Inyecta los repositorios de notificaciones y hábitos.
+     *
+     * @param notificacionRepository repositorio de notificaciones
+     * @param habitoRepository repositorio de hábitos para resolver el hábito asociado
+     */
     @Autowired
     public NotificacionService(NotificacionRepository notificacionRepository, HabitoRepository habitoRepository) {
         this.notificacionRepository = notificacionRepository;
@@ -31,6 +37,9 @@ public class NotificacionService {
     /**
      * Crea una notificación a partir del DTO, asociándola al hábito indicado en {@code habitoId}.
      * Lanza {@link com.jordipatuel.GrowTogetherAPI.exception.ResourceNotFoundException} si el hábito no existe.
+     *
+     * @param dto datos de la nueva notificación
+     * @return la notificación creada
      */
     public NotificacionDTO crearNotificacion(NotificacionCreateDTO dto) {
         Habito habito = habitoRepository.findById(dto.getHabitoId())
@@ -41,6 +50,9 @@ public class NotificacionService {
     }
     /**
      * Devuelve todas las notificaciones de un hábito concreto.
+     *
+     * @param habitoId ID del hábito
+     * @return lista de notificaciones del hábito
      */
     public List<NotificacionDTO> obtenerPorHabito(Integer habitoId) {
         return notificacionRepository.findByHabitoId(habitoId).stream()
@@ -49,6 +61,9 @@ public class NotificacionService {
     }
     /**
      * Devuelve todas las notificaciones de los hábitos de un usuario.
+     *
+     * @param usuarioId ID del usuario
+     * @return lista de notificaciones del usuario
      */
     public List<NotificacionDTO> obtenerPorUsuario(Long usuarioId) {
         return notificacionRepository.findByHabitoUsuarioId(usuarioId).stream()
@@ -57,6 +72,9 @@ public class NotificacionService {
     }
     /**
      * Busca una notificación por ID. Lanza {@link com.jordipatuel.GrowTogetherAPI.exception.ResourceNotFoundException} si no existe.
+     *
+     * @param id ID de la notificación
+     * @return la notificación encontrada
      */
     public NotificacionDTO obtenerPorId(Integer id) {
         return toDTO(obtenerEntidadPorId(id));
@@ -64,6 +82,10 @@ public class NotificacionService {
     /**
      * Actualiza los campos informados de una notificación existente.
      * El campo {@code activa} siempre se sobreescribe con el valor recibido.
+     *
+     * @param id ID de la notificación a actualizar
+     * @param dto datos nuevos de la notificación
+     * @return la notificación actualizada
      */
     public NotificacionDTO actualizarNotificacion(Integer id, NotificacionCreateDTO dto) {
         Notificacion existente = obtenerEntidadPorId(id);
@@ -82,6 +104,8 @@ public class NotificacionService {
     /**
      * Elimina físicamente la notificación. A diferencia de hábitos y usuarios,
      * las notificaciones no usan soft delete.
+     *
+     * @param id ID de la notificación a eliminar
      */
     public void eliminarNotificacion(Integer id) {
         if (!notificacionRepository.existsById(id)) {
@@ -93,6 +117,10 @@ public class NotificacionService {
      * Verifica si el usuario indicado es el propietario de la notificación
      * navegando por la relación notificacion → habito → usuario.
      * Usado por {@code @PreAuthorize} en el controller para control de acceso.
+     *
+     * @param notificacionId ID de la notificación
+     * @param usuarioId ID del usuario a comprobar
+     * @return true si el usuario es propietario
      */
     public boolean isOwner(Integer notificacionId, Long usuarioId) {
         return notificacionRepository.findById(notificacionId)
@@ -103,6 +131,9 @@ public class NotificacionService {
     /**
      * Helper interno: recupera la entidad {@link Notificacion} para operaciones
      * internas del servicio que necesitan manipular la referencia JPA.
+     *
+     * @param id ID de la notificación
+     * @return la entidad encontrada
      */
     private Notificacion obtenerEntidadPorId(Integer id) {
         return notificacionRepository.findById(id)
@@ -111,6 +142,9 @@ public class NotificacionService {
 
     /**
      * Convierte la entidad {@link Notificacion} al DTO de respuesta.
+     *
+     * @param n entidad origen
+     * @return DTO equivalente
      */
     private NotificacionDTO toDTO(Notificacion n) {
         return new NotificacionDTO(
@@ -126,6 +160,9 @@ public class NotificacionService {
     /**
      * Construye una nueva entidad {@link Notificacion} a partir del DTO de creación.
      * No asigna el hábito: eso se resuelve en el método que llama tras consultar el repositorio.
+     *
+     * @param dto DTO con los datos de la notificación
+     * @return entidad sin persistir
      */
     private Notificacion toEntity(NotificacionCreateDTO dto) {
         Notificacion notificacion = new Notificacion();

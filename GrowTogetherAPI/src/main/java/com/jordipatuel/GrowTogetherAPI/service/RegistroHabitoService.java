@@ -31,6 +31,12 @@ import java.util.stream.Collectors;
 public class RegistroHabitoService {
     private final RegistroHabitoRepository registroHabitoRepository;
     private final HabitoRepository habitoRepository;
+    /**
+     * Inyecta los repositorios de registros y hábitos.
+     *
+     * @param registroHabitoRepository repositorio de registros diarios
+     * @param habitoRepository repositorio de hábitos
+     */
     @Autowired
     public RegistroHabitoService(RegistroHabitoRepository registroHabitoRepository,
                                   HabitoRepository habitoRepository) {
@@ -40,6 +46,8 @@ public class RegistroHabitoService {
 
     /**
      * Devuelve todos los registros de la base de datos sin filtrar.
+     *
+     * @return lista completa de registros
      */
     public List<RegistroHabitoDTO> obtenerTodos() {
         return registroHabitoRepository.findAll().stream()
@@ -48,6 +56,9 @@ public class RegistroHabitoService {
     }
     /**
      * Devuelve todos los registros de un usuario.
+     *
+     * @param usuarioId ID del usuario
+     * @return lista de registros del usuario
      */
     public List<RegistroHabitoDTO> obtenerPorUsuario(Long usuarioId) {
         return registroHabitoRepository.findByUsuario_Id(usuarioId).stream()
@@ -56,6 +67,10 @@ public class RegistroHabitoService {
     }
     /**
      * Devuelve los registros de un hábito concreto para un usuario.
+     *
+     * @param habitoId ID del hábito
+     * @param usuarioId ID del usuario propietario
+     * @return lista de registros del usuario para el hábito
      */
     public List<RegistroHabitoDTO> obtenerPorHabitoYUsuario(Integer habitoId, Long usuarioId) {
         return registroHabitoRepository.findByHabito_IdAndUsuario_Id(habitoId, usuarioId).stream()
@@ -64,6 +79,11 @@ public class RegistroHabitoService {
     }
     /**
      * Devuelve el registro de un hábito en una fecha exacta, si existe.
+     *
+     * @param habitoId ID del hábito
+     * @param usuarioId ID del usuario propietario
+     * @param fecha fecha exacta del registro
+     * @return registro si existe
      */
     public Optional<RegistroHabitoDTO> obtenerPorFecha(Integer habitoId, Long usuarioId, LocalDate fecha) {
         return registroHabitoRepository.findByHabito_IdAndUsuario_IdAndFecha(habitoId, usuarioId, fecha)
@@ -71,6 +91,11 @@ public class RegistroHabitoService {
     }
     /**
      * Devuelve todos los registros de un usuario en un rango de fechas.
+     *
+     * @param usuarioId ID del usuario
+     * @param start fecha inicial del rango (inclusive)
+     * @param end fecha final del rango (inclusive)
+     * @return lista de registros en el rango
      */
     public List<RegistroHabitoDTO> obtenerPorRangoFechas(Long usuarioId, LocalDate start, LocalDate end) {
         return registroHabitoRepository.findByUsuario_IdAndFechaBetween(usuarioId, start, end).stream()
@@ -81,6 +106,12 @@ public class RegistroHabitoService {
      * Devuelve el historial de un hábito en un rango de fechas ordenado descendente.
      * Si no se indica fechaFin, usa hoy. Si no se indica fechaInicio, usa los últimos 30 días.
      * Devuelve el DTO simplificado (solo fecha y estado) usado por el heatmap.
+     *
+     * @param habitoId ID del hábito
+     * @param usuarioId ID del usuario propietario
+     * @param fechaInicio fecha inicial del rango (puede ser null)
+     * @param fechaFin fecha final del rango (puede ser null)
+     * @return historial simplificado del hábito en el rango
      */
     public List<RegistroHabitoHistorialDTO> obtenerHistorialHabito(Integer habitoId, Long usuarioId,
                                                                     LocalDate fechaInicio, LocalDate fechaFin) {
@@ -100,6 +131,8 @@ public class RegistroHabitoService {
     /**
      * Cuenta cuántos hábitos están marcados como COMPLETADO hoy en toda la plataforma.
      * Usado por el endpoint de métricas del admin.
+     *
+     * @return número de hábitos completados hoy
      */
     public long contarCompletadosHoy() {
         return registroHabitoRepository.countByEstadoAndFecha(EstadoHabito.COMPLETADO, LocalDate.now());
@@ -110,6 +143,8 @@ public class RegistroHabitoService {
      * desde su fechaInicio hasta ayer. Los días que ya tienen registro se ignoran.
      * Para hábitos PERSONALIZADO solo se marcan los días programados en diasSemana.
      * Llamado por {@link HabitoScheduledService} cada noche y de forma lazy al consultar historial.
+     *
+     * @param habitoId ID del hábito a rellenar
      */
     @Transactional
     public void rellenarNoCompletados(Integer habitoId) {
@@ -158,6 +193,9 @@ public class RegistroHabitoService {
 
     /**
      * Convierte la entidad {@link RegistroHabito} al DTO completo.
+     *
+     * @param r entidad origen
+     * @return DTO completo equivalente
      */
     private RegistroHabitoDTO toDTO(RegistroHabito r) {
         return new RegistroHabitoDTO(
@@ -172,6 +210,9 @@ public class RegistroHabitoService {
     /**
      * Convierte la entidad {@link RegistroHabito} al DTO simplificado de historial
      * (solo fecha y estado, usado por el heatmap).
+     *
+     * @param r entidad origen
+     * @return DTO simplificado para el heatmap
      */
     private RegistroHabitoHistorialDTO toHistorialDTO(RegistroHabito r) {
         return new RegistroHabitoHistorialDTO(r.getFecha(), r.getEstado());

@@ -25,6 +25,12 @@ public class HabitoScheduledService {
     private final HabitoRepository habitoRepository;
     private final RegistroHabitoService registroHabitoService;
 
+    /**
+     * Inyecta el repositorio y el servicio necesarios para la tarea programada.
+     *
+     * @param habitoRepository repositorio de hábitos para listar los activos
+     * @param registroHabitoService servicio que rellena los días sin registro
+     */
     public HabitoScheduledService(HabitoRepository habitoRepository,
                                    RegistroHabitoService registroHabitoService) {
         this.habitoRepository = habitoRepository;

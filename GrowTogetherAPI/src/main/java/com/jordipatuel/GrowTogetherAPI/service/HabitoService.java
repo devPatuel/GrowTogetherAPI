@@ -37,6 +37,13 @@ public class HabitoService {
     private final HabitoRepository habitoRepository;
     private final UsuarioRepository usuarioRepository;
     private final RegistroHabitoRepository registroHabitoRepository;
+    /**
+     * Inyecta los repositorios necesarios para hábitos, usuarios y registros.
+     *
+     * @param habitoRepository repositorio de hábitos
+     * @param usuarioRepository repositorio de usuarios
+     * @param registroHabitoRepository repositorio de registros diarios
+     */
     @Autowired
     public HabitoService(HabitoRepository habitoRepository,
                          UsuarioRepository usuarioRepository,
@@ -49,6 +56,10 @@ public class HabitoService {
     /**
      * Crea un nuevo hábito para el usuario a partir del DTO, inicializa rachas a 0,
      * asigna la fecha de inicio a hoy y crea el primer registro del día como PENDIENTE.
+     *
+     * @param dto datos del nuevo hábito
+     * @param usuarioId ID del usuario propietario
+     * @return el hábito creado con sus métricas iniciales
      */
     public HabitoDTO crearHabito(HabitoCreateDTO dto, Long usuarioId) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
@@ -70,6 +81,8 @@ public class HabitoService {
     /**
      * Devuelve todos los hábitos sin filtrar (uso interno/admin).
      * El contexto de usuario para completadoHoy/progresoMensual se toma del propietario de cada hábito.
+     *
+     * @return lista completa de hábitos
      */
     public List<HabitoDTO> obtenerTodos() {
         return habitoRepository.findAll().stream()
@@ -78,6 +91,9 @@ public class HabitoService {
     }
     /**
      * Busca un hábito por ID. Lanza {@link com.jordipatuel.GrowTogetherAPI.exception.ResourceNotFoundException} si no existe.
+     *
+     * @param id ID del hábito
+     * @return el hábito encontrado
      */
     public HabitoDTO obtenerPorId(Integer id) {
         Habito habito = obtenerEntidadPorId(id);
@@ -86,6 +102,10 @@ public class HabitoService {
     /**
      * Devuelve los hábitos activos de un usuario, calculando {@code completadoHoy}
      * para la fecha indicada (por defecto hoy).
+     *
+     * @param usuarioId ID del usuario propietario
+     * @param fecha fecha de referencia (puede ser null para usar hoy)
+     * @return lista de hábitos activos del usuario
      */
     public List<HabitoDTO> obtenerHabitosPorUsuario(Long usuarioId, LocalDate fecha) {
         return habitoRepository.findByUsuarioIdAndActivoTrue(usuarioId).stream()
@@ -95,6 +115,11 @@ public class HabitoService {
 
     /**
      * Comprueba si un hábito está completado en una fecha concreta (por defecto hoy).
+     *
+     * @param habitoId ID del hábito
+     * @param usuarioId ID del usuario propietario
+     * @param fecha fecha a consultar (puede ser null para usar hoy)
+     * @return true si el hábito está COMPLETADO ese día
      */
     public boolean estaCompletadoEnFecha(Integer habitoId, Long usuarioId, LocalDate fecha) {
         if (fecha == null) fecha = LocalDate.now();
@@ -107,6 +132,11 @@ public class HabitoService {
     /**
      * Marca el hábito como COMPLETADO en la fecha indicada (por defecto hoy).
      * Si ya estaba COMPLETADO no hace nada. Recalcula la racha tras el cambio.
+     *
+     * @param id ID del hábito
+     * @param usuarioId ID del usuario propietario
+     * @param fecha fecha del registro (puede ser null para usar hoy)
+     * @return el hábito con racha y métricas actualizadas
      */
     @Transactional
     public HabitoDTO completarHabito(Integer id, Long usuarioId, LocalDate fecha) {
@@ -144,6 +174,11 @@ public class HabitoService {
     /**
      * Revierte el hábito a PENDIENTE en la fecha indicada (por defecto hoy).
      * Si ya era PENDIENTE o no existe registro, no hace nada. Recalcula la racha.
+     *
+     * @param id ID del hábito
+     * @param usuarioId ID del usuario propietario
+     * @param fecha fecha del registro a revertir (puede ser null para usar hoy)
+     * @return el hábito con racha y métricas recalculadas
      */
     @Transactional
     public HabitoDTO descompletarHabito(Integer id, Long usuarioId, LocalDate fecha) {
@@ -175,6 +210,10 @@ public class HabitoService {
 
     /**
      * Delega el recálculo de racha al método correcto según la frecuencia del hábito.
+     *
+     * @param habito entidad cuyo {@code rachaActual} y {@code rachaMaxima} se actualizan
+     * @param id ID del hábito (mismo que {@code habito.getId()}, para queries optimizadas)
+     * @param usuarioId ID del usuario propietario
      */
     private void recalcularRacha(Habito habito, Integer id, Long usuarioId) {
         if (habito.getFrecuencia() == Frecuencia.PERSONALIZADO
@@ -189,6 +228,10 @@ public class HabitoService {
     /**
      * Recalcula la racha para hábitos DIARIOS contando días consecutivos
      * completados hacia atrás desde hoy (o desde ayer si hoy no está completado).
+     *
+     * @param habito entidad cuyas rachas se actualizan
+     * @param id ID del hábito
+     * @param usuarioId ID del usuario propietario
      */
     private void recalcularRachaDiario(Habito habito, Integer id, Long usuarioId) {
         int racha = 0;
@@ -217,6 +260,10 @@ public class HabitoService {
      * programados (diasSemana) completados de forma consecutiva hacia atrás.
      * Los días no programados se saltan sin romper la racha.
      * No usa fechaInicio como límite inferior para permitir marcados retroactivos.
+     *
+     * @param habito entidad cuyas rachas se actualizan
+     * @param id ID del hábito
+     * @param usuarioId ID del usuario propietario
      */
     private void recalcularRachaPersonalizado(Habito habito, Integer id, Long usuarioId) {
         // DiaSemana.ordinal(): LUNES=0..DOMINGO=6 → DayOfWeek.of(ordinal+1): MONDAY=1..SUNDAY=7
@@ -267,6 +314,10 @@ public class HabitoService {
 
     /**
      * Devuelve el hábito con sus datos de progreso (racha actual y máxima).
+     *
+     * @param id ID del hábito
+     * @param usuarioId ID del usuario propietario
+     * @return el hábito con métricas de progreso
      */
     public HabitoDTO obtenerProgreso(Integer id, Long usuarioId) {
         return toDTO(obtenerEntidadPorId(id), usuarioId);
@@ -275,6 +326,11 @@ public class HabitoService {
     /**
      * Actualiza los campos del hábito con los valores del DTO recibido.
      * Solo modifica y guarda si hubo algún cambio real.
+     *
+     * @param id ID del hábito a editar
+     * @param dto datos nuevos del hábito
+     * @param usuarioId ID del usuario propietario (para enriquecer el DTO de salida)
+     * @return el hábito actualizado
      */
     public HabitoDTO editarHabito(Integer id, HabitoCreateDTO dto, Long usuarioId) {
         Habito habito = habitoRepository.findById(id)
@@ -311,6 +367,8 @@ public class HabitoService {
     }
     /**
      * Desactiva el hábito (soft delete).
+     *
+     * @param id ID del hábito a desactivar
      */
     public void eliminarHabito(Integer id) {
         Habito habito = obtenerEntidadPorId(id);
@@ -320,6 +378,10 @@ public class HabitoService {
     /**
      * Verifica si el usuario indicado es el propietario del hábito.
      * Usado por {@code @PreAuthorize} en el controller para control de acceso.
+     *
+     * @param habitoId ID del hábito
+     * @param usuarioId ID del usuario a comprobar
+     * @return true si el usuario es el propietario del hábito
      */
     public boolean isOwner(Integer habitoId, Long usuarioId) {
         return habitoRepository.findById(habitoId)
@@ -330,6 +392,9 @@ public class HabitoService {
     /**
      * Helper interno: recupera la entidad {@link Habito} para operaciones internas
      * del servicio que necesitan manipular la referencia JPA.
+     *
+     * @param id ID del hábito
+     * @return la entidad encontrada
      */
     private Habito obtenerEntidadPorId(Integer id) {
         return habitoRepository.findById(id)
@@ -338,6 +403,10 @@ public class HabitoService {
 
     /**
      * Convierte un hábito a DTO usando hoy como fecha de referencia para {@code completadoHoy}.
+     *
+     * @param habito entidad origen
+     * @param usuarioId ID del usuario propietario (para los campos derivados)
+     * @return DTO equivalente
      */
     private HabitoDTO toDTO(Habito habito, Long usuarioId) {
         return toDTO(habito, usuarioId, null);
@@ -346,6 +415,11 @@ public class HabitoService {
     /**
      * Convierte un hábito a DTO indicando la fecha de referencia para {@code completadoHoy}
      * y calculando el progreso mensual real.
+     *
+     * @param habito entidad origen
+     * @param usuarioId ID del usuario propietario (para los campos derivados)
+     * @param fecha fecha de referencia (puede ser null para usar hoy)
+     * @return DTO con campos derivados rellenados
      */
     private HabitoDTO toDTO(Habito habito, Long usuarioId, LocalDate fecha) {
         boolean completadoHoy = usuarioId != null
@@ -373,6 +447,10 @@ public class HabitoService {
      * Calcula el porcentaje de días completados en el mes actual respecto a los días esperados.
      * Para hábitos DIARIO cuenta todos los días del mes hasta hoy.
      * Para hábitos PERSONALIZADO cuenta solo los días programados en diasSemana.
+     *
+     * @param habito hábito a evaluar
+     * @param usuarioId ID del usuario propietario
+     * @return progreso mensual entre 0.0 y 1.0
      */
     private double calcularProgresoMensual(Habito habito, Long usuarioId) {
         LocalDate hoy = LocalDate.now();
@@ -417,6 +495,9 @@ public class HabitoService {
     /**
      * Construye una nueva entidad {@link Habito} a partir del DTO de creación.
      * No asigna usuario, rachas ni fechaInicio: eso se resuelve en {@code crearHabito}.
+     *
+     * @param dto DTO con los datos del nuevo hábito
+     * @return entidad sin persistir
      */
     private Habito toEntity(HabitoCreateDTO dto) {
         Habito habito = new Habito();
@@ -435,6 +516,9 @@ public class HabitoService {
 
     /**
      * Convierte un Set de Strings con nombres de días a un Set de {@link DiaSemana}.
+     *
+     * @param dias conjunto de strings (ej: "LUNES", "MARTES")
+     * @return conjunto de enums equivalente
      */
     private Set<DiaSemana> parseDias(Set<String> dias) {
         if (dias == null || dias.isEmpty()) return new HashSet<>();

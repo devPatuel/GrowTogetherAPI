@@ -44,6 +44,7 @@ out/
 *.log
 *.tmp
 build_err*.txt
+warnings-summary.txt
 
 ### Variables de entorno ###
 .env

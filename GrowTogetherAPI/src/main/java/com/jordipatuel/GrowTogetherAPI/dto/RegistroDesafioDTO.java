@@ -7,14 +7,14 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 /**
  * DTO de respuesta con un registro diario de un desafío para un participante.
  * Se devuelve en GET /api/v1/desafios/{id}/historial.
  * El cliente lo usa para pintar la gráfica multilínea de evolución de puntos.
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class RegistroDesafioDTO {
 
     /** ID del usuario participante. */

@@ -7,15 +7,15 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 /**
  * DTO simplificado para el historial de un hábito.
  * Solo contiene fecha y estado, que es lo que necesita el cliente
  * para pintar el heatmap en la pantalla de estadísticas.
  * Se devuelve en GET /api/v1/habitos/{id}/historial.
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class RegistroHabitoHistorialDTO {
 
     /** Fecha del registro. */
