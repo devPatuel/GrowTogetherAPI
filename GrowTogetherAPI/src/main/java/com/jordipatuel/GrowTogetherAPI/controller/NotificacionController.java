@@ -1,4 +1,5 @@
 package com.jordipatuel.GrowTogetherAPI.controller;
+import com.jordipatuel.GrowTogetherAPI.config.AuthUserDetails;
 import com.jordipatuel.GrowTogetherAPI.config.Config;
 import com.jordipatuel.GrowTogetherAPI.dto.NotificacionCreateDTO;
 import com.jordipatuel.GrowTogetherAPI.dto.NotificacionDTO;
@@ -8,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 /**
@@ -60,6 +62,21 @@ public class NotificacionController {
     @GetMapping("/habito/{habitoId}")
     public ResponseEntity<List<NotificacionDTO>> listarPorHabito(@PathVariable Integer habitoId) {
         return ResponseEntity.ok(notificacionService.obtenerPorHabito(habitoId));
+    }
+    /**
+     * Lista todas las notificaciones del usuario autenticado, recorriendo todos sus
+     * habitos. Pensado para que la app pueda sincronizar y reprogramar las notificaciones
+     * locales tras login o reinstalacion sin tener que abrir cada habito uno a uno.
+     * GET /api/v1/notificaciones/usuario
+     *
+     * @param authentication autenticacion de Spring Security con el usuario actual
+     * @return lista de notificaciones del usuario
+     */
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/usuario")
+    public ResponseEntity<List<NotificacionDTO>> listarDelUsuarioAutenticado(Authentication authentication) {
+        AuthUserDetails principal = (AuthUserDetails) authentication.getPrincipal();
+        return ResponseEntity.ok(notificacionService.obtenerPorUsuario(principal.getId()));
     }
     /**
      * Actualiza una notificación. Verifica que el usuario es propietario de la notificación.
