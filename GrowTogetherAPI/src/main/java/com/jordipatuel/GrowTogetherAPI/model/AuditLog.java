@@ -8,9 +8,13 @@ import java.util.Date;
 
 /**
  * Entidad que registra las acciones sensibles realizadas por administradores.
- * No tiene relaciones JPA: usuarioId y usuarioEmail se guardan como valores directos
- * para que el log sea inmutable e independiente del ciclo de vida del usuario.
- * TODO: Jordi — redactar en decisions.md la motivación personal detrás de este diseño.
+ *
+ * No tiene relaciones JPA: {@code usuarioId} y {@code usuarioEmail} se guardan
+ * como valores directos para que el log sea inmutable e independiente del
+ * ciclo de vida del usuario. Si el usuario se desactiva o cambia su email, el
+ * log mantiene la información tal y como estaba en el momento del evento.
+ *
+ * Ver ADR-013 en {@code docs/DECISIONS.md} para el contexto completo.
  */
 @Entity
 @Table(name = "audit_log")

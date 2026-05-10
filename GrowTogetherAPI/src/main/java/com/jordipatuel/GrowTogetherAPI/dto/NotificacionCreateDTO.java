@@ -23,10 +23,6 @@ public class NotificacionCreateDTO {
     @NotNull(message = "La hora programada no puede ser nula")
     private Time horaProgramada;
 
-    /** Frecuencia con la que se repite la notificación (ej: DIARIO). */
-    @NotBlank(message = "La frecuencia no puede estar vacía")
-    private String frecuencia;
-
     /** Indica si la notificación está activa o pausada. */
     private boolean activa;
 

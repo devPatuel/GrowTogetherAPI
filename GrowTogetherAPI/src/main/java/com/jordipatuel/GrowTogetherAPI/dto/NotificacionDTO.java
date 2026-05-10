@@ -21,9 +21,6 @@ public class NotificacionDTO {
     /** Hora programada del recordatorio. */
     private Time horaProgramada;
 
-    /** Frecuencia de repetición de la notificación. */
-    private String frecuencia;
-
     /** Indica si la notificación está activa o pausada. */
     private boolean activa;
 

@@ -12,9 +12,13 @@ import java.util.stream.Collectors;
 /**
  * Servicio de gestión de notificaciones de hábitos.
  *
- * Una notificación está siempre asociada a un hábito y define cuándo y con qué
- * frecuencia se debe recordar al usuario que lo complete. El CRUD de notificaciones
- * push al dispositivo no está conectado aún; este servicio gestiona solo la persistencia.
+ * Una notificación está siempre asociada a un hábito y define la hora a la
+ * que se recordará al usuario. La periodicidad real con la que se dispara la
+ * decide el cliente derivándola del hábito (DIARIO o días específicos), por
+ * lo que aquí no se persiste un campo {@code frecuencia}.
+ *
+ * Este servicio solo gestiona la persistencia. La entrega real al dispositivo
+ * la hace el cliente con {@code flutter_local_notifications}.
  *
  * Recibe y devuelve DTOs: los Controllers nunca ven la entidad {@link Notificacion}.
  */
@@ -95,9 +99,6 @@ public class NotificacionService {
         if (dto.getHoraProgramada() != null) {
             existente.setHoraProgramada(dto.getHoraProgramada());
         }
-        if (dto.getFrecuencia() != null && !dto.getFrecuencia().isBlank()) {
-            existente.setFrecuencia(dto.getFrecuencia());
-        }
         existente.setActiva(dto.isActiva());
         return toDTO(notificacionRepository.save(existente));
     }
@@ -151,7 +152,6 @@ public class NotificacionService {
                 n.getId(),
                 n.getMensaje(),
                 n.getHoraProgramada(),
-                n.getFrecuencia(),
                 n.isActiva(),
                 n.getHabito().getId()
         );
@@ -168,7 +168,6 @@ public class NotificacionService {
         Notificacion notificacion = new Notificacion();
         notificacion.setMensaje(dto.getMensaje());
         notificacion.setHoraProgramada(dto.getHoraProgramada());
-        notificacion.setFrecuencia(dto.getFrecuencia());
         notificacion.setActiva(dto.isActiva());
         return notificacion;
     }

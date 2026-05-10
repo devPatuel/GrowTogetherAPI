@@ -1,0 +1,28 @@
+-- Migración manual asociada al ADR-015 (DECISIONS.md).
+--
+-- Elimina la columna `frecuencia` de la tabla `notificaciones`. La
+-- periodicidad efectiva con la que se dispara una notificación la
+-- decide el cliente derivándola del hábito asociado, así que el campo
+-- duplicaba información del hábito.
+--
+-- Cómo aplicarla:
+--
+-- 1. APLICAR ESTA MIGRACIÓN ANTES DE PUSHEAR EL CÓDIGO. Producción usa
+--    `ddl-auto=validate`: si arranca la app con el código que ya no
+--    declara la columna pero la columna sigue existiendo en BD,
+--    Hibernate la marca como inconsistencia y aborta el bootstrap.
+--
+-- 2. En local (psql contra GrowTogether_DB):
+--    \c GrowTogether_DB
+--    \i docs/migrations/2026-05-10-drop-notificacion-frecuencia.sql
+--
+-- 3. En RDS (según receta del proyecto):
+--    psql "$RDS_URL" -f docs/migrations/2026-05-10-drop-notificacion-frecuencia.sql
+--
+-- 4. Una vez aplicada en RDS, hacer push del código de la API.
+--
+-- 5. Tras confirmar que el deploy de la API está OK, en `GrowTogetherDATA`
+--    eliminar las dos líneas `'frecuencia': 'DIARIO'` hardcoded del
+--    repositorio cliente y bumpear DATA a la siguiente versión.
+
+ALTER TABLE notificaciones DROP COLUMN IF EXISTS frecuencia;

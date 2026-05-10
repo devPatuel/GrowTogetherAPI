@@ -120,6 +120,13 @@ SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun --no-daemon > /tmp/api_log.txt 2>&1
 
 ## Documentación de la API
 
+### Decisiones de arquitectura
+
+Las decisiones técnicas (ADRs) se mantienen en
+[`docs/DECISIONS.md`](docs/DECISIONS.md). Las migraciones manuales que
+hay que aplicar contra la BD antes de pushear código (porque producción
+usa `ddl-auto=validate`) viven en `docs/migrations/`.
+
 ### Swagger UI (interactiva)
 
 Con la aplicación en marcha, la documentación Swagger está disponible en:

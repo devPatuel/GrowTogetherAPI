@@ -9,8 +9,16 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 /**
  * Entidad que representa un recordatorio asociado a un hábito.
- * Almacena la hora y frecuencia a la que el usuario quiere ser recordado.
- * La entrega real de la notificación push está pendiente de implementación.
+ *
+ * Almacena la hora a la que el usuario quiere ser recordado. La frecuencia
+ * con la que el recordatorio se dispara la decide el cliente derivándola del
+ * hábito asociado: si el hábito es DIARIO la noti suena cada día, si es
+ * PERSONALIZADO suena solo los {@code diasSemana} del hábito. Por eso no
+ * existe campo {@code frecuencia} aquí.
+ *
+ * La entrega real de la notificación al dispositivo se hace en cliente con
+ * {@code flutter_local_notifications}. El backend solo persiste la
+ * configuración del recordatorio.
  */
 @Entity
 @Table(name = "notificaciones")
@@ -35,11 +43,6 @@ public class Notificacion {
     @NotNull(message = "La hora programada no puede ser nula")
     @Column(nullable = false)
     private Time horaProgramada;
-
-    /** Frecuencia de repetición de la notificación. */
-    @NotBlank(message = "La frecuencia no puede estar vacía")
-    @Column(nullable = false)
-    private String frecuencia;
 
     /** Indica si la notificación está activa o pausada. */
     @Column(nullable = false)
