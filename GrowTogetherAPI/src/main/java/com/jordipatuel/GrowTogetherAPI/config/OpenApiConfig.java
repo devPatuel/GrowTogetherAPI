@@ -53,6 +53,7 @@ import org.springframework.context.annotation.Configuration;
                 license = @License(name = "Uso académico - Proyecto Final 2DAM")
         ),
         servers = {
+                @Server(url = "https://growtogether.jordipatuel.com", description = "Producción (AWS)"),
                 @Server(url = "http://localhost:8081", description = "Entorno local de desarrollo")
         },
         security = @SecurityRequirement(name = "bearerAuth")
