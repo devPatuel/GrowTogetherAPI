@@ -158,7 +158,7 @@ ignorada por git.
 
 ```
 src/main/java/com/jordipatuel/GrowTogetherAPI/
-├── controller/     # 6 controladores REST (Auth, Usuario, Habito, Desafio, Notificacion, Admin)
+├── controller/     # 7 controladores REST (Auth, Usuario, Habito, Desafio, Notificacion, Admin, Version)
 ├── service/        # 11 servicios con la lógica de negocio
 ├── repository/     # 10 repositorios Spring Data JPA
 ├── model/          # 10 entidades JPA + enums (DiaSemana, EstadoHabito, Frecuencia, Roles...)
@@ -218,7 +218,7 @@ Ver el Swagger para la lista completa de endpoints con parámetros y respuestas.
 
 - **Rachas**: se recalculan en cada completar/descompletar. Los hábitos `PERSONALIZADO` (con días de la semana específicos) solo cuentan los días programados; los no programados se saltan sin romper la racha.
 - **Historial NO_COMPLETADO**: un job nocturno (`HabitoScheduledService`, 00:01) marca como `NO_COMPLETADO` todos los registros `PENDIENTE` del día anterior. También se aplica de forma lazy al consultar el historial.
-- **Puntos**: completar un hábito suma 10 puntos al usuario (idempotente — no suma doble si ya estaba completado). Desmarcar resta 10 puntos.
+- **Puntos**: los puntos se ganan **solo completando días de un desafío** (no por completar hábitos). El cálculo lo hace `Scoring.java` con bonus de racha: 10 puntos base, +10% por cada día consecutivo, con tope x20. Los puntos del usuario se reflejan en `puntosTotales` y se recalculan al marcar/desmarcar días del desafío.
 - **Revocación de tokens**: el campo `tokenVersion` en `Usuario` se incrementa al cambiar contraseña o desactivar cuenta, invalidando todos los JWT anteriores del usuario.
 - **Bloqueo con motivo**: el bloqueo de un usuario (`DELETE /admin/usuarios/{id}`) exige `motivo` en el body. Se guarda en `motivo_bloqueo` y `fecha_bloqueo` y queda en el audit log. Un admin no puede bloquearse a sí mismo (validación en controller).
 - **Consejos diarios**: los consejos pueden no tener fecha asignada (consejos "de reserva"). Cuando se asigna, la fecha es única (constraint UNIQUE + validación en `ConsejoService`). El endpoint `GET /usuarios/consejo/hoy` devuelve el consejo activo para el día actual o 204 si no hay.
@@ -238,7 +238,8 @@ Ver el Swagger para la lista completa de endpoints con parámetros y respuestas.
 ## Notas para producción
 
 - Cambiar `spring.profiles.active` a un perfil de producción con `ddl-auto=validate` o `none`.
-- Proteger o eliminar Swagger UI (`/swagger-ui.html`).
 - Configurar CORS con el dominio real en lugar de `localhost` y `192.168.*`.
 - Revisar el rate limiting: la implementación actual con `ConcurrentHashMap` no se limpia automáticamente (posible memory leak a largo plazo).
 - Migrar el almacenamiento de fotos de Base64 en BD a un servicio cloud (S3 o equivalente).
+
+> Sobre Swagger UI: se mantiene público a propósito incluso en producción para que el tribunal pueda explorar la API desplegada sin acceso al repo. Decisión documentada en [ADR-014](docs/DECISIONS.md#adr-014-swagger-ui-pblico).

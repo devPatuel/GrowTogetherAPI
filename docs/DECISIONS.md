@@ -30,7 +30,6 @@ Decisiones de arquitectura del backend Spring Boot de GrowTogether.
 | [ADR-012](#adr-012-consejos-un-consejo-por-fecha) | Un consejo por fecha | Aceptado |
 | [ADR-013](#adr-013-auditora-sin-relacin-jpa) | Auditoría sin relación JPA | Aceptado |
 | [ADR-014](#adr-014-swagger-ui-pblico) | Swagger UI público | Aceptado (académico) |
-| [ADR-015](#adr-015-eliminacin-de-notificacionfrecuencia) | Eliminación de `Notificacion.frecuencia` | Aceptado |
 
 ---
 
@@ -383,7 +382,8 @@ similares).
 
 ## ADR-012: Consejos: un consejo por fecha
 
-**Fecha**: 2026-04-01
+**Fecha**: 2026-04-01 (cerrado 2026-05-13)
+**Estado**: Aceptado e implementado en BD
 
 ### Contexto y decisión
 
@@ -392,9 +392,15 @@ Cada `Consejo` tiene una `fechaPublicacion` (día en que se mostrará).
 
 ### Estado de implementación
 
-Restricción aplicada en el servicio (`ConsejoService` valida antes de
-guardar). **Pendiente:** añadir `@UniqueConstraint` en la entidad para
-duplicar la garantía a nivel de BD.
+- Validación en servicio: `ConsejoService` comprueba antes de guardar.
+- Garantía a nivel de BD: la columna `fecha_publicacion` está declarada
+  como `UNIQUE` en `Consejo.java` (`@Column(name = "fecha_publicacion", unique = true)`).
+  Hibernate genera la restricción en la tabla `consejos`.
+
+Doble red: el servicio devuelve un error semántico al cliente y la BD
+rechaza el insert como último recurso.
+
+**Implementación**: `Consejo.java`, `ConsejoService.java`.
 
 ---
 
@@ -424,101 +430,64 @@ campos simples, sin relación `@ManyToOne` con `Usuario`.
 
 ---
 
-## ADR-014: Swagger UI público
+## ADR-014: Swagger UI público (incluido en producción)
 
-**Fecha**: 2026-03-01
+**Fecha**: 2026-03-01 (revisado 2026-05-13)
 **Estado**: Aceptado (justificado por contexto académico)
 
 ### Contexto y decisión
 
 `/swagger-ui/**` y `/v3/api-docs/**` son públicos en `SecurityConfig`,
-sin token.
+sin token, **tanto en dev como en producción**.
+
+En `application-prod.properties`:
+
+```properties
+springdoc.api-docs.enabled=true
+springdoc.swagger-ui.enabled=true
+```
 
 ### Alternativas descartadas
 
-- **Swagger con auth básica**: dos mecanismos de auth conviviendo,
-  complejidad sin beneficio aquí.
-- **Eliminar SpringDoc en producción**: válido en prod real, pero el
-  proyecto académico requiere que el evaluador pueda explorar la API.
+- **Swagger con auth básica en prod**: dos mecanismos de auth
+  conviviendo, complejidad sin beneficio claro para el contexto
+  académico.
+- **Desactivar SpringDoc en producción**: válido en prod real, pero el
+  proyecto académico requiere que el evaluador pueda explorar la API
+  desplegada sin acceso al repo ni a un cliente.
+- **Servir Javadoc como única documentación**: el workflow `docs.yml`
+  publica Javadoc en Pages, pero Javadoc documenta el código interno,
+  no los endpoints REST. No cubre la necesidad del evaluador.
 
 ### Por qué público
 
-- Proyecto académico: el evaluador debe poder explorar y probar la API
-  sin implementar un cliente.
+- Proyecto académico (TFG DAM 2026): el tribunal debe poder explorar y
+  probar la API desplegada en AWS sin implementar un cliente.
 - Swagger muestra todos los endpoints, parámetros y respuestas
-  visualmente.
-- Agiliza pruebas durante desarrollo.
+  visualmente, incluyendo el botón "Try it out".
+- Javadoc y Swagger son complementarios: Javadoc cubre el código
+  interno (Pages), Swagger cubre el contrato REST (mismo servidor).
 
-### Producción
+### Riesgos asumidos
 
-Si la API se desplegara públicamente, Swagger debería protegerse con
-auth básica o desactivarse: `/v3/api-docs/**` expone la estructura
-completa, lo que facilita el reconocimiento a un atacante.
+- **Mapa completo de la API expuesto**: facilita el reconocimiento a un
+  atacante. Mitigación: todos los endpoints sensibles requieren JWT y
+  `/auth/*` está limitado por `RateLimitFilter` (10 req/min/IP).
+- **Filtración de payloads de auth**: el formato de `/auth/login` y
+  `/auth/register` es público. Mitigación: rate limiting + BCrypt +
+  `tokenVersion` (ADR-002, ADR-003, ADR-007).
+- **Posible filtración de versión de Spring Boot/dependencias**: la
+  spec OpenAPI puede dar pistas sobre CVEs aplicables. Asumido para
+  esta entrega.
 
-**Implementación**: `SecurityConfig.java`.
+### Si esto fuera prod real
 
----
+- Proteger `/swagger-ui` y `/v3/api-docs` con auth básica, o
+- Servir la spec OpenAPI exportada como HTML estático fuera del backend.
 
-## ADR-015: Eliminación de `Notificacion.frecuencia`
-
-**Fecha**: 2026-05-10
-
-### Contexto
-
-El campo `frecuencia` de la entidad `Notificacion` (y de su DTO)
-duplicaba la información del hábito asociado. La app móvil no lo usaba
-para decidir cuándo disparar la noti: lo hacía consultando
-`habito.frecuencia` y `habito.diasSemana`.
-
-### Decisión
-
-**Eliminar el campo `frecuencia` de la entidad, los DTOs y la columna
-de la tabla `notificaciones`.** La frecuencia con la que la noti se
-dispara la decide el cliente derivándola del hábito asociado.
-
-### Migración
-
-`ddl-auto=validate` en producción exige aplicar la migración antes de
-desplegar el código:
-
-```sql
-ALTER TABLE notificaciones DROP COLUMN frecuencia;
-```
-
-Documentada en `docs/migrations/2026-05-10-drop-frecuencia.sql`.
-
-### Coordinación con DATA
-
-El paquete `growtogether_data` ya eliminó el campo en `v0.4.0`. El
-repositorio cliente sigue enviando `frecuencia: 'DIARIO'` hardcoded
-**solo hasta** que esta migración se aplique. Tras la migración, hay
-que quitar las dos líneas hardcoded en
-`GrowTogetherDATA/lib/src/repositories/notificacion_repository.dart` y
-bumpear DATA otra vez.
+**Implementación**: `SecurityConfig.java`,
+`application-prod.properties`.
 
 ---
-
-## Estado actual del proyecto (mayo 2026)
-
-Los módulos de **hábitos**, **autenticación**, **usuarios** (perfil,
-búsqueda) y **notificaciones** (CRUD + integración con
-`flutter_local_notifications` en cliente) están funcionando.
-
-Pendientes de pulir:
-
-- **Desafíos** — creación, listado y ranking implementados, sin
-  validación end-to-end con el cliente.
-- **Participación en desafíos** — lógica de unirse y ranking pendiente
-  de pruebas.
-- **Sistema de puntos** — la integración con desafíos
-  (`puntosGanadosEnDesafio`) está pendiente de definición final.
-- **`Consejo.fechaPublicacion`** — validada en servicio, pendiente
-  añadir `@UniqueConstraint` en la entidad.
-- **`@UniqueConstraint` en migración manual** — al aplicarse en BD
-  debe coordinarse con `ddl-auto=validate`.
-- **Tabla `habito_dias` a escala** — los días de la semana de hábitos
-  PERSONALIZADO se guardan en una tabla secundaria (una fila por día
-  por hábito). Alternativas a evaluar: bitmask entero (7 bits) o
-  string separado por comas en la propia tabla `habitos`.
 
 *Última actualización: mayo 2026 — Jordi Patuel Pons*
