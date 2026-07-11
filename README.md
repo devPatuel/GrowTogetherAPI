@@ -1,12 +1,38 @@
-# GrowTogether — API REST
+# GrowTogether API
 
-Backend del proyecto final de 2º DAM — Jordi Patuel Pons (2025/2026).
+> Backend REST del ecosistema **GrowTogether**: autenticación JWT, hábitos con rachas, desafíos entre usuarios y panel de administración.
 
-API REST para la app de seguimiento de hábitos GrowTogether: autenticación JWT, gestión de hábitos con rachas, historial de registros, desafíos entre usuarios y panel de administración.
+![Java](https://img.shields.io/badge/Java-17-007396?logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.4-6DB33F?logo=springboot&logoColor=white)
+![Spring Security](https://img.shields.io/badge/Spring%20Security-JWT-6DB33F?logo=springsecurity&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-BD-4169E1?logo=postgresql&logoColor=white)
+![Gradle](https://img.shields.io/badge/Gradle-Kotlin%20DSL-02303A?logo=gradle&logoColor=white)
+![OpenAPI](https://img.shields.io/badge/OpenAPI-Swagger%20UI-85EA2D?logo=swagger&logoColor=black)
 
 ---
 
-## Stack
+## Sobre el proyecto
+
+**GrowTogether** es una aplicación de seguimiento de hábitos con componente social, inspirada en *Atomic Habits* de James Clear: construye hábitos consistentes, visualiza tu progreso y compite con amigos en desafíos.
+
+Es el **Trabajo Final de Grado de DAM** (Desarrollo de Aplicaciones Multiplataforma, 2025/2026) de **Jordi Patuel Pons**.
+
+### Papel de este repositorio
+
+Este repo contiene la **API REST** que consumen la app móvil y el panel de administración: autenticación JWT, gestión de hábitos con rachas, historial de registros, desafíos entre usuarios, consejos diarios y endpoints de administración con auditoría.
+
+## Ecosistema GrowTogether
+
+| Repositorio | Descripción |
+|---|---|
+| **[GrowTogetherAPI](https://github.com/devPatuel/GrowTogetherAPI)** ← estás aquí | Backend REST (Java 17 + Spring Boot) |
+| [GrowTogetherAPP](https://github.com/devPatuel/GrowTogetherAPP) | App móvil de hábitos (Flutter) |
+| [GrowTogetherADMIN](https://github.com/devPatuel/GrowTogetherADMIN) | Panel de administración web (Flutter Web) |
+| [GrowTogetherDATA](https://github.com/devPatuel/GrowTogetherDATA) | Paquete Dart compartido: modelos, cliente HTTP y repositorios |
+
+---
+
+## Stack técnico
 
 | Capa | Tecnología |
 |------|-----------|
@@ -16,18 +42,19 @@ API REST para la app de seguimiento de hábitos GrowTogether: autenticación JWT
 | Base de datos | PostgreSQL (puerto 5433) |
 | Build | Gradle (Kotlin DSL) |
 | Documentación | SpringDoc OpenAPI 2.6.0 (Swagger UI) |
+| Contenedores | Dockerfile multi-stage (Temurin 17, imagen final solo JRE) |
 
 ---
 
-## Requisitos previos
+## Cómo ejecutarlo en local
+
+> El código vive en el subdirectorio `GrowTogetherAPI/` del repo; ejecuta los comandos de Gradle desde ahí.
+
+### Requisitos previos
 
 - Java 17+
-- PostgreSQL corriendo en el puerto **5433** (configurable via `DB_URL`)
+- PostgreSQL corriendo en el puerto **5433** (configurable vía `DB_URL`)
 - Gradle (incluido en el wrapper, no hace falta instalarlo)
-
----
-
-## Instalación y primer arranque
 
 ### 1. Crear la base de datos
 
@@ -48,7 +75,7 @@ El proyecto requiere estas variables antes de arrancar. Sin ellas la aplicación
 
 **En IntelliJ**: `Run → Edit Configurations → Environment variables`
 
-**En CLI** (perfil dev con fichero `application-dev.properties`):
+**En CLI** (perfil dev con fichero `application-dev.properties`, hay un `application-dev.properties.example` de plantilla):
 
 ```bash
 # application-dev.properties (NO subir al repo — está en .gitignore)
@@ -71,21 +98,7 @@ El fichero `data.sql` contiene dos usuarios de prueba y hábitos de ejemplo. Par
 
 > Con `ddl-auto=update` las tablas y datos se **conservan entre reinicios**. No es necesario repetir este paso.
 
----
-
-## Arrancar el proyecto
-
-### Opción A — Docker Compose (recomendado para validar la topología completa)
-
-Desde la raíz del repo padre `GrowTogether/`:
-
-```bash
-docker compose -f docker-compose.local.yml up -d --build
-```
-
-Levanta API + Postgres + nginx en una red interna. La API queda en `http://localhost:8081` y todos los healthchecks definidos. Es la misma topología que se despliega en EC2.
-
-### Opción B — Gradle directo
+### 4. Arrancar
 
 ```bash
 # Con perfil dev (credenciales en application-dev.properties)
@@ -97,14 +110,16 @@ SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun
 
 La API arranca en `http://localhost:8081`. El base path de todos los endpoints es `/api/v1`.
 
-### Arranque desde CLI sin IntelliJ
+### Docker (opcional)
+
+El repo incluye un `Dockerfile` multi-stage (build con Gradle → imagen final solo con el JRE sobre Alpine), el mismo que se usa en el despliegue en EC2. Necesita un PostgreSQL accesible y las mismas variables de entorno:
 
 ```bash
-# Ver si hay algo corriendo en el puerto 8081
-netstat -ano | grep ":8081"
-
-# Arrancar en segundo plano con log a fichero
-SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun --no-daemon > /tmp/api_log.txt 2>&1 &
+docker build -t growtogether-api ./GrowTogetherAPI
+docker run -p 8081:8081 \
+  -e JWT_SECRET=... -e DB_USERNAME=... -e DB_PASSWORD=... \
+  -e DB_URL=jdbc:postgresql://host.docker.internal:5433/GrowTogether_DB \
+  growtogether-api
 ```
 
 ---
@@ -122,10 +137,7 @@ SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun --no-daemon > /tmp/api_log.txt 2>&1
 
 ### Decisiones de arquitectura
 
-Las decisiones técnicas (ADRs) se mantienen en
-[`docs/DECISIONS.md`](docs/DECISIONS.md). Las migraciones manuales que
-hay que aplicar contra la BD antes de pushear código (porque producción
-usa `ddl-auto=validate`) viven en `docs/migrations/`.
+Las decisiones técnicas (ADRs) se mantienen en [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ### Swagger UI (interactiva)
 
@@ -142,15 +154,13 @@ Para probar endpoints protegidos:
 
 ### Javadoc (referencia HTML estática)
 
-Las clases (controladores, servicios, modelos, DTOs) están comentadas con
-Javadoc. Para generar la documentación:
+Las clases (controladores, servicios, modelos, DTOs) están comentadas con Javadoc. Para generar la documentación:
 
 ```bash
 ./gradlew javadoc
 ```
 
-Salida en `build/docs/javadoc/index.html`. Por defecto está bajo `build/`,
-ignorada por git.
+Salida en `build/docs/javadoc/index.html`. Por defecto está bajo `build/`, ignorada por git.
 
 ---
 
@@ -227,7 +237,7 @@ Ver el Swagger para la lista completa de endpoints con parámetros y respuestas.
 
 ## Seguridad
 
-- JWT stateless con expiración de 24h. Secret obligatorio via variable de entorno.
+- JWT stateless con expiración de 24h. Secret obligatorio vía variable de entorno.
 - BCrypt para contraseñas con política de complejidad (mínimo 8 caracteres, mayúscula, minúscula, dígito y carácter especial).
 - Rate limiting: 10 requests/minuto por IP en los endpoints de login y registro.
 - Control de acceso por rol (`STANDARD` / `ADMIN`) y por propietario (`@PreAuthorize` con SpEL).
@@ -238,8 +248,14 @@ Ver el Swagger para la lista completa de endpoints con parámetros y respuestas.
 ## Notas para producción
 
 - Cambiar `spring.profiles.active` a un perfil de producción con `ddl-auto=validate` o `none`.
-- Configurar CORS con el dominio real en lugar de `localhost` y `192.168.*`.
+- Configurar CORS con el dominio real en lugar de `localhost` y `192.168.*` (variable `CORS_ORIGINS`).
 - Revisar el rate limiting: la implementación actual con `ConcurrentHashMap` no se limpia automáticamente (posible memory leak a largo plazo).
 - Migrar el almacenamiento de fotos de Base64 en BD a un servicio cloud (S3 o equivalente).
 
 > Sobre Swagger UI: se mantiene público a propósito incluso en producción para que el tribunal pueda explorar la API desplegada sin acceso al repo. Decisión documentada en [ADR-014](docs/DECISIONS.md#adr-014-swagger-ui-pblico).
+
+---
+
+## Licencia
+
+Proyecto académico — Trabajo Final de Grado de DAM · GrowTogether · Jordi Patuel Pons.
